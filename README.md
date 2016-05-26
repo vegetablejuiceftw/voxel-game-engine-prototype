@@ -12,3 +12,5 @@ Numpad 2 to spawn wolf.
 Nupad 3 to spawn human.
 
 Scroll click to set target for human.
+
+Numpad + to raise actor logic tick rate.
