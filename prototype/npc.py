@@ -127,7 +127,11 @@ class NPC(AnimusAlpha):
                 self.visual.alignAxisToVect((0,1,0),1)
             self.visual.alignAxisToVect((0,0,1),2)
         
-        airSpace = POSSIBLE_MOVES_DICT[flooredTuple(vector)]
+        airSpace = POSSIBLE_MOVES_DICT.get(flooredTuple(vector))
+
+        if airSpace == None:
+            return False
+
         for deltaAirVector in airSpace:
             newAirPos = (
                 self.pos[0]+deltaAirVector[0],

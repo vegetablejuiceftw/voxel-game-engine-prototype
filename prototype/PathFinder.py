@@ -197,7 +197,7 @@ class PathGenerator:
 
     def visual(self,pos,color,time, scale = (1,1,1)):
         # return
-        time = int(time * 20 + 1)
+        # time = int(time * 20 + 1)
         # time = 1
         _, voxel = logic.chunks.checkRay(pos)
         if voxel:
