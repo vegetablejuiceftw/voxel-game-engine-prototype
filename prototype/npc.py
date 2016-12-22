@@ -1,14 +1,10 @@
 from Chunk import *
-from bge import logic,events,render
+from bge import logic, render
 from mathutils import Vector
 from time import time
-from random import random,shuffle,choice,randint
-from math import floor
-from heapq import *
-from collections import deque,Counter
+from random import random, choice
 from PathFinder import *
 from animus import *
-
 
 scene = logic.getCurrentScene()
 logic.npc = []
@@ -16,7 +12,7 @@ logic.PathManager = PathManager()
 logic.NPC_TICK_COUNTER = 0
 logic.NPC_CURRENT_INDEX = 0
 logic.NPC_TIME_CONSTANT = 0.01
-logic.marker = (0,0,0)
+logic.marker = 0, 0, 0
 
 
 class NPC(AnimusAlpha):
@@ -24,381 +20,336 @@ class NPC(AnimusAlpha):
     POSITIONS = {}
     ROOM_SIZE = 8
     COUNT = 0
-    def __init__(self,obj):
-        super(NPC, self).__init__()
-        NPC.POS_CHECK = logic.chunks.checkRay
 
-        pos = flooredTuple( obj.worldPosition )
+    def __init__(self, obj):
+        super(NPC, self).__init__()
+        NPC.POS_CHECK = logic.chunks.raycast
+
+        pos = floored_tuple(obj.worldPosition)
         obj.worldPosition = Vector(pos)
         self._pos = obj.worldPosition
-        # self.pos = obj.worldPosition
 
-        self.lastVoxel = self.POS_CHECK(self.pos)[1]
-        self.register(self.lastVoxel)
+        self.last_voxel = self.POS_CHECK(self.pos)[1]
+        self.register(self.last_voxel)
         self.obj = obj
-        self.visual = obj.children.get(obj.name+'_visual')
-        self.info = obj.children.get(obj.name+'_text')
+        self.visual = obj.children.get(obj.name + '_visual')
+        self.info = obj.children.get(obj.name + '_text')
         self.alive = True
-        self.lastMove = Vector((0,0,0))
+        self.lastMove = Vector((0, 0, 0))
 
         self.target = None
         self.path = None
 
         self.stupid = True
 
-        self.lastTick = time()
+        self.last_tick = time()
         self.energy = 0
 
         NPC.COUNT += 1
         self.name = 'NPC_BASIC'
 
+    def relative_move(self, other):
+        relative_vector = other - self.pos
+        return self.move(relative_vector)
 
+    @staticmethod
+    def room_index(pos):
+        return tuple(i // NPC.ROOM_SIZE * NPC.ROOM_SIZE for i in pos)
 
-    def __add__(self,other):
-        if type(other) == Vector:
-            return self.move(other)
-    
-    def __sub__(self,other):        
-        if type(other) == Vector:
-            relativeV = other-self.pos
-            return self.move(relativeV)
-
-    def roomIndex(self,pos):
-        return tuple(int(i//NPC.ROOM_SIZE)*NPC.ROOM_SIZE for i in pos)
-
-    def changeRoom(self,old):
-
-        key = self.roomIndex(old)  
+    def change_room(self, old):
+        key = self.room_index(old)
         room = NPC.POSITIONS.get(key)
-        if room : room.discard(self)
+        if room:
+            room.discard(self)
 
-        key = self.roomIndex(self.pos)
+        key = self.room_index(self.pos)
         if key in NPC.POSITIONS:
             NPC.POSITIONS[key].add(self)
         else:
-            NPC.POSITIONS[key] = set([self])
+            NPC.POSITIONS[key] = {self}
 
-        
-    def dist(self,other):
-        return (self.pos-other.pos).length
+    def dist(self, other):
+        return (self.pos - other.pos).length
 
-    def near(self,typeClass,quick=False):
-        # print(self.name)
-        key = self.roomIndex(self.pos)
-        deltas = [(0, 0, 0), (-NPC.ROOM_SIZE, 0, 0), (0, -NPC.ROOM_SIZE, 0), (0, 0, -NPC.ROOM_SIZE), (0, 0, NPC.ROOM_SIZE), (0, NPC.ROOM_SIZE, 0), (NPC.ROOM_SIZE, 0, 0), (-NPC.ROOM_SIZE, -NPC.ROOM_SIZE, 0), (-NPC.ROOM_SIZE, 0, -NPC.ROOM_SIZE), (-NPC.ROOM_SIZE, 0, NPC.ROOM_SIZE), (-NPC.ROOM_SIZE, NPC.ROOM_SIZE, 0), (0, -NPC.ROOM_SIZE, -NPC.ROOM_SIZE), (0, -NPC.ROOM_SIZE, NPC.ROOM_SIZE), (0, NPC.ROOM_SIZE, -NPC.ROOM_SIZE), (0, NPC.ROOM_SIZE, NPC.ROOM_SIZE), (NPC.ROOM_SIZE, -NPC.ROOM_SIZE, 0), (NPC.ROOM_SIZE, 0, -NPC.ROOM_SIZE), (NPC.ROOM_SIZE, 0, NPC.ROOM_SIZE), (NPC.ROOM_SIZE, NPC.ROOM_SIZE, 0), (-NPC.ROOM_SIZE, -NPC.ROOM_SIZE, -NPC.ROOM_SIZE), (-NPC.ROOM_SIZE, -NPC.ROOM_SIZE, NPC.ROOM_SIZE), (-NPC.ROOM_SIZE, NPC.ROOM_SIZE, -NPC.ROOM_SIZE), (-NPC.ROOM_SIZE, NPC.ROOM_SIZE, NPC.ROOM_SIZE), (NPC.ROOM_SIZE, -NPC.ROOM_SIZE, -NPC.ROOM_SIZE), (NPC.ROOM_SIZE, -NPC.ROOM_SIZE, NPC.ROOM_SIZE), (NPC.ROOM_SIZE, NPC.ROOM_SIZE, -NPC.ROOM_SIZE), (NPC.ROOM_SIZE, NPC.ROOM_SIZE, NPC.ROOM_SIZE)]
+    def near(self, type_class, quick=False):
+        key = self.room_index(self.pos)
+        deltas = [(0, 0, 0), (-NPC.ROOM_SIZE, 0, 0), (0, -NPC.ROOM_SIZE, 0), (0, 0, -NPC.ROOM_SIZE),
+                  (0, 0, NPC.ROOM_SIZE), (0, NPC.ROOM_SIZE, 0), (NPC.ROOM_SIZE, 0, 0),
+                  (-NPC.ROOM_SIZE, -NPC.ROOM_SIZE, 0), (-NPC.ROOM_SIZE, 0, -NPC.ROOM_SIZE),
+                  (-NPC.ROOM_SIZE, 0, NPC.ROOM_SIZE), (-NPC.ROOM_SIZE, NPC.ROOM_SIZE, 0),
+                  (0, -NPC.ROOM_SIZE, -NPC.ROOM_SIZE), (0, -NPC.ROOM_SIZE, NPC.ROOM_SIZE),
+                  (0, NPC.ROOM_SIZE, -NPC.ROOM_SIZE), (0, NPC.ROOM_SIZE, NPC.ROOM_SIZE),
+                  (NPC.ROOM_SIZE, -NPC.ROOM_SIZE, 0), (NPC.ROOM_SIZE, 0, -NPC.ROOM_SIZE),
+                  (NPC.ROOM_SIZE, 0, NPC.ROOM_SIZE), (NPC.ROOM_SIZE, NPC.ROOM_SIZE, 0),
+                  (-NPC.ROOM_SIZE, -NPC.ROOM_SIZE, -NPC.ROOM_SIZE), (-NPC.ROOM_SIZE, -NPC.ROOM_SIZE, NPC.ROOM_SIZE),
+                  (-NPC.ROOM_SIZE, NPC.ROOM_SIZE, -NPC.ROOM_SIZE), (-NPC.ROOM_SIZE, NPC.ROOM_SIZE, NPC.ROOM_SIZE),
+                  (NPC.ROOM_SIZE, -NPC.ROOM_SIZE, -NPC.ROOM_SIZE), (NPC.ROOM_SIZE, -NPC.ROOM_SIZE, NPC.ROOM_SIZE),
+                  (NPC.ROOM_SIZE, NPC.ROOM_SIZE, -NPC.ROOM_SIZE), (NPC.ROOM_SIZE, NPC.ROOM_SIZE, NPC.ROOM_SIZE)]
         radar = []
         count = 0
-        # print(typeClass,quick)
+
         for dV in deltas:
-            checkKey = (key[0]+dV[0],key[1]+dV[1],key[2]+dV[2])
-            neighbours = NPC.POSITIONS.get(checkKey,[])
+            check_key = (key[0] + dV[0], key[1] + dV[1], key[2] + dV[2])
+            neighbours = NPC.POSITIONS.get(check_key, [])
             for other in neighbours:
                 count += 1
-                if not typeClass or isinstance(other,typeClass):
+                if not type_class or isinstance(other, type_class):
                     dist = self.dist(other)
-                    if quick:                        
-                        return [(dist,other)]
-                    radar.append((dist,other))
-        return sorted( radar, key=lambda x:x[0])
+                    if quick:
+                        return [(dist, other)]
+                    radar.append((dist, other))
+        return sorted(radar, key=lambda x: x[0])
 
     @property
     def pos(self):
         return Vector(self._pos)
 
-    def register(self,voxel):
-        if self.lastVoxel:
-            #self.lastVoxel.val = 0
-            self.lastVoxel.NPC = None
-        if voxel:            
-            self.lastVoxel = voxel
-            #voxel.val = -1
+    def register(self, voxel):
+        if self.last_voxel:
+            self.last_voxel.NPC = None
+        if voxel:
+            self.last_voxel = voxel
             voxel.NPC = self
 
     def recharge(self):
-        #if random()>0.7:
-        self.energy += (time()-self.lastTick)
-        self.lastTick = time()
+        self.energy += time() - self.last_tick
+        self.last_tick = time()
 
-    def move(self,vector):
+    def move(self, vector):
         if self.visual:
-            if vector.length !=0:
-                self.visual.alignAxisToVect(vector,1)
+            if vector.length != 0:
+                self.visual.alignAxisToVect(vector, 1)
             else:
-                self.visual.alignAxisToVect((0,1,0),1)
-            self.visual.alignAxisToVect((0,0,1),2)
-        
-        airSpace = POSSIBLE_MOVES_DICT.get(flooredTuple(vector))
+                self.visual.alignAxisToVect((0, 1, 0), 1)
+            self.visual.alignAxisToVect((0, 0, 1), 2)
 
-        if airSpace == None:
+        air_space = POSSIBLE_MOVES_DICT.get(floored_tuple(vector))
+
+        if air_space is None:
             return False
 
-        for deltaAirVector in airSpace:
-            newAirPos = (
-                self.pos[0]+deltaAirVector[0],
-                self.pos[1]+deltaAirVector[1],
-                self.pos[2]+deltaAirVector[2]
+        for deltaAirVector in air_space:
+            new_air_pos = (
+                self.pos[0] + deltaAirVector[0],
+                self.pos[1] + deltaAirVector[1],
+                self.pos[2] + deltaAirVector[2]
             )
-            _, voxel    =  logic.chunks.checkRay(newAirPos)
-            if not isAir(voxel):
-                # print('not air',newAirPos,voxel)
+            _, voxel = logic.chunks.raycast(new_air_pos)
+            if not is_air(voxel):
                 break
         else:
-            targetPos = self.pos + vector
-            _, ground   =  logic.chunks.checkRay((targetPos[0],targetPos[1],targetPos[2]-1))
-            if isSolid(ground):
-                _, targetVoxel    =  self.POS_CHECK(targetPos)
+            target_pos = self.pos + vector
+            _, ground = logic.chunks.raycast((target_pos[0], target_pos[1], target_pos[2] - 1))
+            if is_solid(ground):
+                _, target_voxel = self.POS_CHECK(target_pos)
                 old = Vector(self._pos)
-                self._pos +=  vector
-                self.register(targetVoxel) 
-                self.changeRoom(old)
+                self._pos += vector
+                self.register(target_voxel)
+                self.change_room(old)
                 return True
-            # else:
-                # print('not ground')
         return False
 
     def tick(self):
         self.gravity()
 
-
     def gravity(self):
-        standingPos = self.pos + Vector((0,0,-1))
-        standingVox = self.POS_CHECK(standingPos)[1]
-        if isAir(standingVox):
+        standing_pos = self.pos + Vector((0, 0, -1))
+        standing_voxel = self.POS_CHECK(standing_pos)[1]
+        if is_air(standing_voxel):
             old = Vector(self._pos)
-            self._pos +=  Vector((0,0,-1))
-            self.register(standingVox) 
-            self.changeRoom(old)
+            self._pos += Vector((0, 0, -1))
+            self.register(standing_voxel)
+            self.change_room(old)
 
-        if self.pos.z< -100:
-            self.alive = False
+        if self.pos.z < -100:
+            self.die()
 
     def die(self):
         self.alive = False
         self.register(None)
         self.obj.endObject()
 
-    """ Override this to chagne pathing algorithm"""
-    def createPathGenerator(self):
-        start   = flooredTuple(self.pos)
-        return PathGenerator(start,logic.marker,self)
+    def path_generator_factory(self):
+        start = floored_tuple(self.pos)
+        return PathGenerator(start, logic.marker, self)
 
-
-    def checkForPrey(self):
+    def check_for_food(self):
         pass
 
-    def travel(self):        
+    def travel(self):
         waiting = False
 
         while True:
             if not waiting:
-
-                pathGenerator = self.createPathGenerator()
-                logic.PathManager.append(pathGenerator)
+                path_generator = self.path_generator_factory()
+                logic.PathManager.append(path_generator)
                 waiting = True
                 self.path = None
             # path has arrived
-            elif self.path!=None:
+            elif self.path is not None:
                 # path is bad
                 if self.path and not self.path.valid():
                     waiting = False
-                    # print('path is bat',self.path.path )
-
                 else:
-
-                    pathObj = self.path.path.pop(-1)
-                    pathObj.assign(self) 
-                    state = pathObj.tick()
-                    while state==PathObject.PATH_WAIT:
+                    path_obj = self.path.path.pop(-1)
+                    path_obj.assign(self)
+                    state = path_obj.tick()
+                    while state == PathObject.PATH_WAIT:
                         yield
-                        state = pathObj.tick()
+                        state = path_obj.tick()
 
                     if state == PathObject.PATH_FAIL or not self.path.valid():
-                        self.checkForPrey()
+                        self.check_for_food()
                         waiting = False
-
-                        # print('path is state bad',self.path.path ,state == PathObject.PATH_FAIL , not self.path.valid())
-
-
             yield
 
 
-
 class Sheep(NPC):
-    """docstring for Sheep"""
-
     def __init__(self, arg):
         super(Sheep, self).__init__(arg)
         self.stupid = True
         self.name = str(NPC.COUNT) + 'SHEEP'
 
     def tick(self):
-        if self.energy>0:
-            self.brownianMotion()
-            self.energy-=0.21
+        if self.energy > 0:
+            self.brownian_motion()
+            self.energy -= 0.21
         self.gravity()
         self.recharge()
 
         if random() > 0.98:
             self.info.text = 'Baah'
-        elif random() > 0.97:    
+        elif random() > 0.97:
             self.info.text = ''
 
-    def brownianMotion(self):
+    def brownian_motion(self):
+        maximum = 60
+        dangerous_npc = self.near(Wolf, quick=True) + self.near(StateWolf, quick=True)
 
-        dangerNPC = self.near(Wolf,quick=True) + self.near(StateWolf,quick=True) 
-
-        if dangerNPC:
-            dist,danger = dangerNPC[0] 
-            direction   = Vector(danger.pos)-self.pos
-            MAX = 60
-            distance    = min(direction.length,MAX)
+        if dangerous_npc:
+            dist, danger = dangerous_npc[0]
+            direction = Vector(danger.pos) - self.pos
+            distance = min(direction.length, maximum)
             valid = False
             while not valid:
-                rV          = Vector(choice( list(POSSIBLE_MOVES_DICT.keys() )))
-                valid       = direction.angle(rV,999) > random() * (MAX-distance)/MAX * 4
-            render.drawLine(self.pos,self.pos+rV*5,(1,0.1,0.5))
-            self + rV
-            self.lastMove = rV
+                random_vec = Vector(choice(list(POSSIBLE_MOVES_DICT.keys())))
+                valid = direction.angle(random_vec, 999) > random() * (maximum - distance) / maximum * 4
+            render.drawLine(self.pos, self.pos + random_vec * 5, (1, 0.1, 0.5))
+            self.move(random_vec)
+            self.lastMove = random_vec
         else:
-            deltaVector = choice( list(POSSIBLE_MOVES_DICT.keys() ))
-            self + Vector(deltaVector)
+            delta_vector = choice(list(POSSIBLE_MOVES_DICT.keys()))
+            self.move(Vector(delta_vector))
 
 
 class Wolf(NPC):
-    """docstring for Sheep"""
     def __init__(self, arg):
         super(Wolf, self).__init__(arg)
         self.task = self.travel()
         self.stupid = False
 
     def tick(self):
-        self.gravity() 
+        self.gravity()
         self.recharge()
-        #if self.energy>0:
-            # print(self.energy)
         next(self.task)
 
-    def checkForPrey(self):
+    def check_for_food(self):
         for dv in POSSIBLE_MOVES:
-            checkPos = self.pos + Vector(dv)
-            _, checkVoxel =  self.POS_CHECK(checkPos)
-            if isNPC(checkVoxel):
-                prey = checkVoxel.NPC
-                if isinstance(prey,Sheep):
-                    print("KILLED",prey)
+            check_pos = self.pos + Vector(dv)
+            _, check_voxel = self.POS_CHECK(check_pos)
+            if is_npc(check_voxel):
+                prey = check_voxel.NPC
+                if isinstance(prey, Sheep):
+                    print("KILLED", prey)
                     prey.die()
 
-    def createPathGenerator(self):
-        start = flooredTuple(self.pos)
-        return NearestTargetPathGenerator(start,Sheep,self,search_limit=200)
-
-
+    def path_generator_factory(self):
+        start = floored_tuple(self.pos)
+        return NearestTargetPathGenerator(start, Sheep, self, search_limit=200)
 
 
 class Human(NPC):
-    """docstring for Sheep"""
-    def __init__(self, arg):
+    def __init__(self, arg, path_generator=HybridPathGenerator):
         super(Human, self).__init__(arg)
         self.task = self.travel()
         self.stupid = False
         self.info.text = 'I am Human.'
+        self.path_generator = path_generator
 
     def tick(self):
-        self.gravity() 
+        self.gravity()
         self.recharge()
         next(self.task)
 
+    def path_generator_factory(self):
+        start = floored_tuple(self.pos)
+        return self.path_generator(start, logic.marker, self, search_limit=9000)
 
-    def createPathGenerator(self):
-        # print('using destructo')
-        start = flooredTuple(self.pos)
-        # return PathGenerator(start,logic.marker,self, search_limit=9000)
-        # return DestructMemoryPathGenerator(start,logic.marker,self, search_limit=9000)
-        # return DestructPathGenerator(start,logic.marker,self, search_limit=9000)
-        return HybridPathGenerator(start,logic.marker,self, search_limit=9000)
 
 class StateWolf(NPC):
-    """docstring for Sheep"""
     def __init__(self, arg):
         super(StateWolf, self).__init__(arg)
-        self.task = self.travel()       
-
+        self.task = self.travel()
 
     def tick(self):
-        self.gravity() 
+        self.gravity()
         self.state = self.state.tick()
         self.info.text = self.status()
-        # next(self.task)
 
-    def getFood(self):
+    def get_food(self):
         for dv in POSSIBLE_MOVES:
-            checkPos = self.pos + Vector(dv)
-            _, checkVoxel =  self.POS_CHECK(checkPos)
-            if isNPC(checkVoxel):
-                prey = checkVoxel.NPC
-                if isinstance(prey,Sheep):
+            check_pos = self.pos + Vector(dv)
+            _, check_voxel = self.POS_CHECK(check_pos)
+            if is_npc(check_voxel):
+                prey = check_voxel.NPC
+                if isinstance(prey, Sheep):
                     return prey
 
-    # def checkForPrey(self):
-    #     for dv in POSSIBLE_MOVES:
-    #         checkPos = self.pos + Vector(dv)
-    #         _, checkVoxel =  self.POS_CHECK(checkPos)
-    #         if isNPC(checkVoxel):
-    #             prey = checkVoxel.NPC
-    #             if isinstance(prey,Sheep):
-    #                 print("KILLED",prey)
-    #                 prey.die()
+    def path_generator_factory(self):
+        start = floored_tuple(self.pos)
+        return NearestTargetPathGenerator(start, Sheep, self, search_limit=200)
 
-    def createPathGenerator(self):
-        start = flooredTuple(self.pos)
-        return NearestTargetPathGenerator(start,Sheep,self,search_limit=200)
 
-    
-def initNPC(npc):
-    logic.npc.append(npc)
+def init_human(cont):
+    logic.npc.append(Human(cont.owner))
 
-def initHuman(cont):
-    logic.npc.append(Human(cont.owner))       
 
-def initWolf(cont):
-    logic.npc.append(StateWolf(cont.owner)) 
+def init_wolf(cont):
+    logic.npc.append(StateWolf(cont.owner))
 
-def init(cont):
+
+def init_sheep(cont):
     logic.npc.append(Sheep(cont.owner))
 
-def initSheep(cont):
-    init(cont)
 
-def iteratePathGenerator():
+def iterate_pathing_generator():
     logic.PathManager.tick()
 
-def iterateNPC(cont):
-    NPC_COUNT = len(logic.npc)
-    cont.owner['NPC_COUNT'] = NPC_COUNT
-    if not NPC_COUNT: return
 
-    EPOCH = time() // logic.NPC_TIME_CONSTANT
+def iterate_npc(cont):
+    npc_count = len(logic.npc)
+    cont.owner['npc_count'] = npc_count
+    if not npc_count:
+        return
 
-    if logic.NPC_TICK_COUNTER != EPOCH:
+    epoch = time() // logic.NPC_TIME_CONSTANT
 
-        if NPC_COUNT > logic.NPC_CURRENT_INDEX:
-            startTime = time()    
+    if logic.NPC_TICK_COUNTER != epoch:
+
+        if npc_count > logic.NPC_CURRENT_INDEX:
+            start_time = time()
             temp_counter = 0
-            while time()-startTime<0.004 and NPC_COUNT > logic.NPC_CURRENT_INDEX and temp_counter<200: 
-                temp_counter+=1
-                npc = logic.npc[logic.NPC_CURRENT_INDEX] 
+            while time() - start_time < 0.004 and npc_count > logic.NPC_CURRENT_INDEX and temp_counter < 200:
+                temp_counter += 1
+                npc = logic.npc[logic.NPC_CURRENT_INDEX]
                 if not npc.alive:
                     logic.npc.remove(npc)
                     del npc
-                    NPC_COUNT = len(logic.npc)
+                    npc_count = len(logic.npc)
                     continue
                 npc.tick()
                 logic.NPC_CURRENT_INDEX += 1
 
         else:
             logic.NPC_CURRENT_INDEX = 0
-            logic.NPC_TICK_COUNTER = EPOCH
-        
-        # print('working',logic.NPC_CURRENT_INDEX/NPC_COUNT)
-
-
+            logic.NPC_TICK_COUNTER = epoch

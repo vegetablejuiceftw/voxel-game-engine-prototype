@@ -1,153 +1,128 @@
-from Chunk import *
-from bge import logic,events
-from mathutils import Vector
+import os
 from time import time
-from random import random,shuffle
-from math import floor,sin
+from math import floor, sin
+from Chunk import *
+from bge import logic, events
+from mathutils import Vector
 from work import *
-from npc import Sheep, initNPC
 
 scene = logic.getCurrentScene()
 cont = logic.getCurrentController()
 own = cont.owner
 logic.counter = 0
-logic.faceCounter = 0
-
-MAP_SIZE = 5
 
 
-def createUniqueMesh(request_size, position):
-    obj = scene.addObject("Cube{}".format(CHUNK_SIZE),own)
+def main():
+    # clear console
+    os.system("cls")
+
+    start = time()
+    logic.chunks = ChunkManager(create_unique_mesh, draw)
+    logic.work = []
+    face_count = voxel_count = chunk_count = 0
+
+    max_time = 0
+    for x in range(-MAP_SIZE, MAP_SIZE + 1):
+        for y in range(-MAP_SIZE, MAP_SIZE + 1):
+            for z in range(32 // CHUNK_SIZE + 1):
+                cX, cY, cZ = x * CHUNK_SIZE, y * CHUNK_SIZE, z * CHUNK_SIZE
+                print("chunk being spawned", (cX, cY, cZ))
+
+                t = time()
+                c = logic.chunks.init_chunk((cX, cY, cZ))
+                max_time = max(time() - t, max_time)
+
+                chunk_faces, chunk_voxels = c.face_count, len(c)
+                voxel_count += chunk_voxels
+                face_count += chunk_faces
+                chunk_count += bool(chunk_voxels)
+        print("face_count {}  voxel_count {}".format(face_count, voxel_count))
+
+    print('face_count', face_count, ' voxel_count', voxel_count, ' filled-chunk_count', chunk_count)
+    print("FULL time {:.2} sec, max_time of a chunk {:.2}".format(time() - start, max_time))
+
+
+def create_unique_mesh(request_size, position):
+    obj = scene.addObject("Cube{}".format(CHUNK_SIZE), own)
     obj.worldPosition = position
-    obj.replaceMesh(newMesh(request_size),True) 
+    obj.replaceMesh(new_mesh(request_size), True)
     return obj
 
-def resizeMesh(obj,request_size):
-    obj.replaceMesh(newMesh(request_size),True) 
 
-def newMesh(request_size):
-    sizes= [32,64,96,128,192,256,384,512,768]
-    size = next(x for x in sizes if x>request_size)
-    logic.counter +=  1
-    pre = logic.LibNew("GEN_"+str(time()+random()+ logic.counter ), "Mesh", ["Donor"+str(size)])
+def resize_mesh(obj, request_size):
+    obj.replaceMesh(new_mesh(request_size), True)
+
+
+def new_mesh(request_size):
+    sizes = [32, 64, 96, 128, 192, 256, 384, 512, 768]
+    size = "Donor{}".format(next(x for x in sizes if x > request_size))
+    logic.counter += 1
+    pre = logic.LibNew("GEN_{}".format(time()), "Mesh", [size])
     handle = pre[0].name
     return handle
 
 
-def draw(chunk,faces):    
-
-    # if chunk.obj == None:
-    #     chunk.obj = createUniqueMesh(len(chunk.faces),chunk.pos)
+def draw(chunk, faces):
     obj = chunk.obj
-
-
-    mesh = obj.meshes[0] 
-
-    faceCount = len(faces)
-    currentFaces = mesh.numPolygons
-    if (faceCount>currentFaces or (faceCount<=currentFaces/2.2 and faceCount>=16)):
-        resizeMesh(obj,faceCount)
-        print("resize0",faceCount,currentFaces,obj.meshes[0].numPolygons)
     mesh = obj.meshes[0]
-    
-    for index in range(faceCount):
-        T, A, B, C, D, N = faces[index]                    
+    face_count = len(faces)
+    current_faces = mesh.numPolygons
+    if face_count > current_faces or 16 <= face_count <= current_faces / 2.2:
+        resize_mesh(obj, face_count)
+        print("draw::resize -> chamge of donor mesh. face counts: {} -> {}".format(face_count, current_faces))
+    mesh = obj.meshes[0]
 
-        face = [A,B,C,D]                                        
+    for index in range(face_count):
+        T, A, B, C, D, N = faces[index]
+        face = [A, B, C, D]
 
         for v_index in range(4):
-            vertex = mesh.getVertex(0, index*4+v_index)
-            
-            vertex.setXYZ(face[v_index])  
+            vertex = mesh.getVertex(0, index * 4 + v_index)
+
+            vertex.setXYZ(face[v_index])
             if T == 1:
                 c = list(COLORS[T])
-                c[1] = c[1]/2 + abs(sin(vertex.z)/2)*0.25 + 0.12
-                vertex.color = c
+                c[1] = c[1] / 2 + abs(sin(vertex.z) / 2) * 0.25 + 0.12
+                vertex.setRGBA(c)
             else:
-                vertex.color = COLORS[T]            
+                vertex.setRGBA(COLORS[T])
 
             vertex.setNormal(N)
 
-    for index in range(faceCount,mesh.numPolygons):        
-        
+    for index in range(face_count, mesh.numPolygons):
         for v_index in range(4):
-            vertex = mesh.getVertex(0, index*4+v_index)
+            vertex = mesh.getVertex(0, index * 4 + v_index)
             if vertex.z < -10:
                 index = None
                 break
-            else:
-                vertex.setXYZ( (0,0,-99) )
-        if index==None: break
-
-    #obj.reinstancePhysicsMesh()
-
-def main():
-
-    import os
-    os.system("cls")
-
-    START = time()
-
-    logic.chunks = ChunkManager(createUniqueMesh,draw)
-
-    logic.work = []
-
-    R = MAP_SIZE
-
-    FACE_COUNT = 0
-    VOXEL_COUNT = 0
-    CHUNK_COUNT = 0
-
-    MAX_TIME = 0
-    for cX in range(-R*CHUNK_SIZE,(R+1)*CHUNK_SIZE,CHUNK_SIZE):
-        for cY in range(-R*CHUNK_SIZE,(R+1)*CHUNK_SIZE,CHUNK_SIZE):
-            for cZ in range(-CHUNK_SIZE*0,CHUNK_SIZE*8,CHUNK_SIZE):                
-
-                # c = logic.chunks[(cX,cY,cZ)] 
-                cTime = time()
-                c = logic.chunks.initChunk((cX,cY,cZ))
-                MAX_TIME = max( (time()-cTime), MAX_TIME)
-                
-                logic.faceCounter += (len(c.faces))
-                VOXEL_COUNT += len(c)
-                FACE_COUNT += len(c.faces)
-                if len(c):
-                    CHUNK_COUNT += 1
-
-                    # print(len(c.faces)/len(c))
+            vertex.setXYZ((0, 0, -99))
+        if index is None:
+            break
 
 
-        print(logic.faceCounter,VOXEL_COUNT)
-    
-    print(logic.faceCounter)
-                   
-    print( "FULL time ",time()-START , 'sec', 'MAX_TIME of 1 chunk',MAX_TIME)
-    print( 'FACE_COUNT',FACE_COUNT,' VOXEL_COUNT', VOXEL_COUNT,' CHUNK_COUNT' ,CHUNK_COUNT,)
-
-def inputEvents(cont):
-
+def input_events(cont):
     if not cont.sensors['Always'].positive:
         return
 
-    own     = cont.owner
-    mouse       = logic.mouse
-    keyboard    = logic.keyboard
+    own = cont.owner
+    mouse = logic.mouse
+    keyboard = logic.keyboard
     JUST_ACTIVATED = logic.KX_INPUT_JUST_ACTIVATED
 
     move(cont)
-    if mouse.events[events.RIGHTMOUSE] == JUST_ACTIVATED:    
-        build(cont)
-    if mouse.events[events.LEFTMOUSE] == JUST_ACTIVATED:    
-        blast(cont)  
-    if mouse.events[events.MIDDLEMOUSE] == JUST_ACTIVATED:    
-        mark(cont)  
 
-    # print(cont.sensors,cont.sensors['Always'].positive,cont.sensors['Over'].positive)
-    if mouse.events[events.WHEELUPMOUSE] :    
-        logic.RADIUS = min(10,logic.RADIUS+0.15)
-    if mouse.events[events.WHEELDOWNMOUSE] :    
-        logic.RADIUS = max(0,logic.RADIUS-0.15)
-    
+    if mouse.events[events.RIGHTMOUSE] == JUST_ACTIVATED:
+        build(cont)
+    if mouse.events[events.LEFTMOUSE] == JUST_ACTIVATED:
+        blast(cont)
+    if mouse.events[events.MIDDLEMOUSE] == JUST_ACTIVATED:
+        mark(cont)
+
+    if mouse.events[events.WHEELUPMOUSE]:
+        logic.RADIUS = min(10, logic.RADIUS + 0.10)
+    if mouse.events[events.WHEELDOWNMOUSE]:
+        logic.RADIUS = max(0, logic.RADIUS - 0.10)
+
     if not own.get('select'):
         own['select'] = 1
     if keyboard.events[events.F1KEY]:
@@ -157,200 +132,190 @@ def inputEvents(cont):
     if keyboard.events[events.F3KEY]:
         own['select'] = 3
 
-    logic.BLAST_DELTA = blastSphere((logic.RADIUS))
-    own     = cont.owner
+    logic.BLAST_DELTA = blast_sphere(logic.RADIUS)
+    own = cont.owner
     own['radious'] = logic.RADIUS
 
-    
+
 def move(cont):
-    own     = cont.owner
+    own = cont.owner
     keyboard = logic.keyboard
-    JUST_ACTIVATED = logic.KX_INPUT_JUST_ACTIVATED
 
-    SPEED = 0.3
-    if keyboard.events[events.LEFTSHIFTKEY]:  
-        SPEED *= 9
-    if keyboard.events[events.WKEY]:        
-        own.applyMovement((0,0,-SPEED),True)
+    SPEED = 0.2
+    if keyboard.events[events.LEFTSHIFTKEY]:
+        SPEED *= 6
+    if keyboard.events[events.WKEY]:
+        own.applyMovement((0, 0, -SPEED), True)
     if keyboard.events[events.SKEY]:
-        own.applyMovement((0,0,SPEED),True)
+        own.applyMovement((0, 0, SPEED), True)
     if keyboard.events[events.AKEY]:
-        own.applyMovement((-SPEED,0,0),True)
+        own.applyMovement((-SPEED, 0, 0), True)
     if keyboard.events[events.DKEY]:
-        own.applyMovement((SPEED,0,0),True)
+        own.applyMovement((SPEED, 0, 0), True)
     if keyboard.events[events.SPACEKEY]:
-        own.applyMovement((0,0,SPEED),False)
+        own.applyMovement((0, 0, SPEED), False)
 
-def generateBlockRay(start, vector, distance):  
-    dx,dy,dz = vector
+
+def generate_block_ray(start, vector, distance):
+    dx, dy, dz = vector
     start = Vector(start)
     pos = Vector(start)
     positions = []
 
-    while (pos-start).length < distance:
+    while (pos - start).length < distance:
+        x, y, z = pos
+        x, y, z = x - floor(x), y - floor(y), z - floor(z)
 
-        x,y,z = pos
-        x,y,z = x-floor(x),y-floor(y),z-floor(z)
-
-        x = x if dx<0 else 1-x
-        y = y if dy<0 else 1-y
-        z = z if dz<0 else 1-z
+        x = x if dx < 0 else 1 - x
+        y = y if dy < 0 else 1 - y
+        z = z if dz < 0 else 1 - z
 
         x += 0.001
         y += 0.001
         z += 0.001
 
-        if dx!=0:
-            vx = pos+vector*abs(x/dx)
-            positions.append( vx )
-        if dy!=0:    
-            vy = pos+vector*abs(y/dy)
-            positions.append( vy )
-        if dz!=0:
-            vz = pos+vector*abs(z/dz)
-            positions.append( vz )       
-
+        if dx:
+            vx = pos + vector * abs(x / dx)
+            positions.append(vx)
+        if dy:
+            vy = pos + vector * abs(y / dy)
+            positions.append(vy)
+        if dz:
+            vz = pos + vector * abs(z / dz)
+            positions.append(vz)
         pos += vector
 
-        # print(pos,vector)   
-    
-    positions = sorted(positions,key = lambda x: (start-x).length)  
+    positions = sorted(positions, key=lambda current: (start - current).length)
 
-    
     result = []
     visited = set()
     last = None
     for V in positions:
-        newPos = (floor(V[0]),floor(V[1]),floor(V[2])) 
-        if newPos in visited: 
-            continue        
-        if result and (last-Vector(newPos)).length > 1.8: # bigger than cube diagonal
+        new_pos = floor(V[0]), floor(V[1]), floor(V[2])  # TODO
+        if new_pos in visited or result and (last - Vector(new_pos)).length > 1.8:  # bigger than cube diagonal
             continue
-        visited.add(newPos)
-        result.append(newPos)
-        last = Vector(newPos)
-   
+        visited.add(new_pos)
+        result.append(new_pos)
+        last = Vector(new_pos)
     return result
 
-def checkRay(checkPos):
-    chunkKey = tupleToChunkKey(checkPos)
+
+def raycast(checkPos):
+    chunkKey = tuple_to_chunk_key(checkPos)
     chunk = logic.chunks.get(chunkKey)
-    
+
     if chunk:
-        localPos = flooredTuple(Vector(checkPos)-Vector(chunkKey))
+        localPos = floor_tuple(Vector(checkPos) - Vector(chunkKey))
 
-        voxelIndex = tupleToIndex(localPos)
+        voxelIndex = tuple_to_index(localPos)
         if chunk.voxels[voxelIndex]:
-            return (chunk,voxelIndex)
-        return(chunk,None)
-    return (None,None)
-
-def blastSphere(R):
-    casuality = []
-    bR = int(R)
-    for x in range(-bR,bR+1):
-        for y in range(-bR,bR+1):
-            for z in range(-bR,bR+1):
-                v = Vector((x,y,z))
-                # if v.length <= R:
-                casuality.append(v)
-    return casuality
+            return chunk, voxelIndex
+        return chunk, None
+    return None, None
 
 
+def blast_sphere(radius):
+    # cube if radius is integer
+    casualty = []
+    bR = int(radius)
+    for x in range(-bR, bR + 1):
+        for y in range(-bR, bR + 1):
+            for z in range(-bR, bR + 1):
+                v = Vector((x, y, z))
+                if radius == int(radius) or v.length <= radius:
+                    casualty.append(v)
+    return casualty
 
 
-def getRayHit(position,direction):
-    # chunk TODO
+def get_ray_hit(position, direction):
+    #  chunk TODO
     if not direction.length:
         return
     pos = Vector(position)
-    
-    cubes = generateBlockRay(pos,direction,10)
+
+    cubes = generate_block_ray(pos, direction, 10)
     last = cubes[0]
     for index in range(500):
-   
-        if len(cubes)==index:
+        if len(cubes) == index:
             pos += direction * 9
-            cubes += generateBlockRay(pos,direction,10)
+            cubes += generate_block_ray(pos, direction, 10)
 
-        newPos = cubes[index]
+        new_pos = cubes[index]
 
-        chunk, voxel =  logic.chunks.checkRay(newPos)
-        normal = Vector(last)-Vector(newPos)
-        last = newPos
+        chunk, voxel = logic.chunks.raycast(new_pos)
+        normal = Vector(last) - Vector(new_pos)
+        last = new_pos
         if voxel and voxel.val:
-            return (chunk,voxel,newPos,normal)
+            return chunk, voxel, new_pos, normal
+    return None, None, None, None
 
-    return (None,None,None,None)
 
-
-def blast(cont):    
-    own         = cont.owner
-    direction   = cont.sensors["Over"].rayDirection
-    position    = Vector(own.worldPosition)     
-    if  not direction.length:
+def blast(cont):
+    own = cont.owner
+    direction = cont.sensors["Over"].rayDirection
+    position = Vector(own.worldPosition)
+    if not direction.length:
         return
-    chunk, voxel, hitPos,normal = getRayHit(position,direction)
+    chunk, voxel, hit_pos, normal = get_ray_hit(position, direction)
     if voxel:
         if own.get('select') == 1:
-            logic.work.append(ChangeWork(Vector(hitPos),0))
+            logic.work.append(ChangeWork(Vector(hit_pos), 0))
         elif own.get('select') == 2:
-            logic.work.append(RemoveWork(hitPos,0))
+            logic.work.append(RemoveWork(hit_pos, 0))
+            print("REMOVE")
         elif own.get('select') == 3:
-            _, voxel    =  logic.chunks.checkRay(Vector(hitPos)+normal)
+            _, voxel = logic.chunks.raycast(Vector(hit_pos) + normal)
             if voxel.NPC:
                 voxel.NPC.die()
 
-def build(cont):    
-    own         = cont.owner
-    direction   = cont.sensors["Over"].rayDirection
-    position    = Vector(own.worldPosition) 
-    if  not direction.length:
-        return 
-    chunk, voxel, hitPos,normal = getRayHit(position,direction)
+
+def build(cont):
+    own = cont.owner
+    direction = cont.sensors["Over"].rayDirection
+    position = Vector(own.worldPosition)
+    if not direction.length:
+        return
+    chunk, voxel, hit_pos, normal = get_ray_hit(position, direction)
     if voxel:
         if own.get('select') == 1:
-            logic.work.append(ChangeWork(Vector(hitPos)+normal*logic.RADIUS,3))
-            
+            logic.work.append(ChangeWork(Vector(hit_pos) + normal * logic.RADIUS, 3))
+
         elif own.get('select') == 2:
-            logic.work.append(RemoveWork(Vector(hitPos)+normal,4))
+            logic.work.append(RemoveWork(Vector(hit_pos) + normal, 4))
         elif own.get('select') == 3:
-            freePos = Vector(hitPos)+normal
-            obj = scene.addObject('Sheep','Npc_manager')
-            obj.worldPosition = freePos
-            
-
-
-
+            free_pos = Vector(hit_pos) + normal
+            obj = scene.addObject('Sheep', 'Npc_manager')
+            obj.worldPosition = free_pos
 
 
 def mark(cont):
-    own         = cont.owner
-    direction   = cont.sensors["Over"].rayDirection
-    position    = Vector(own.worldPosition) 
-    if  not direction.length:
-        return 
-    chunk, voxel, hitPos,normal = getRayHit(position,direction)
-    if voxel:        
-        logic.marker = Vector(hitPos)+normal
-        print('marker',logic.marker,chunk.pos)
+    own = cont.owner
+    direction = cont.sensors["Over"].rayDirection
+    position = Vector(own.worldPosition)
+    if not direction.length:
+        return
+    chunk, voxel, hit_pos, normal = get_ray_hit(position, direction)
+    if voxel:
+        logic.marker = Vector(hit_pos) + normal
+        print('marker', logic.marker, chunk.pos)
 
-def filterManager(cont):
+
+def filter_manager(cont):
     try:
         logic.shaders
     except:
-        logic.shaders = {1:False,2:False,3:False,4:False}
-    shaders = logic.shaders    
+        logic.shaders = {1: False, 2: False, 3: False, 4: False}
+    shaders = logic.shaders
 
     keyboard = logic.keyboard
     JUST_ACTIVATED = logic.KX_INPUT_JUST_ACTIVATED
 
-    for i,keyEvent in enumerate([events.ONEKEY,events.TWOKEY,events.THREEKEY,events.FOURKEY]):
+    for i, keyEvent in enumerate([events.ONEKEY, events.TWOKEY, events.THREEKEY, events.FOURKEY]):
 
         if keyboard.events[keyEvent] == JUST_ACTIVATED:
-            key = i+1
-            if not shaders[key]: 
-                cont.activate('F'+str(key))
+            key = i + 1
+            if not shaders[key]:
+                cont.activate('F' + str(key))
             else:
-                cont.activate('R'+str(key))
+                cont.activate('R' + str(key))
             shaders[key] = not shaders[key]

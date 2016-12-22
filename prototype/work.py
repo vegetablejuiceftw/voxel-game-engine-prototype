@@ -1,9 +1,7 @@
-from Chunk import *
-from bge import logic,events
-from mathutils import Vector
 from time import time
-from random import random,shuffle
-from math import floor,sin
+from bge import logic
+from mathutils import Vector
+from Chunk import *
 
 scene = logic.getCurrentScene()
 cont = logic.getCurrentController()
@@ -12,39 +10,40 @@ own = cont.owner
 logic.RADIUS = 2
 logic.BLAST_DELTA = []
 
-def doWork():
+
+def do_work():
     t = time()
     index = 0
 
     for work in logic.work:
 
         if type(work) == WaitWork:
-            if work.workStep():
+            if work.step():
                 index += 1
                 break
             return
 
-        while  time()-t<0.004:
-            if work.workStep():
+        while time() - t < 0.004:
+            if work.step():
                 index += 1
-                # print("work Done")#,type(work))
                 break
         else:
-            if (time()-t)>0.01:
-                wait = WaitWork( (time()-t)//0.018 )
-                logic.work = [wait]+logic.work
-                print("too much",time()-t)
+            if (time() - t) > 0.01:
+                wait = WaitWork((time() - t) // 0.018)
+                logic.work = [wait] + logic.work
+                print("too much", time() - t)
             break
-            
+
     logic.work = logic.work[index:]
+
 
 class Work:
     def __init__(self):
         self.tool = None
-        self.work = None        
+        self.work = None
         self.done = False
 
-    def workStep(self):
+    def step(self):
         if not self.work:
             self.work = self.tool()
         if self.done:
@@ -52,86 +51,84 @@ class Work:
         self.done = next(self.work)
         return self.done
 
+
 class WaitWork(Work):
-    """docstring for ClassName"""
     def __init__(self, arg):
         super(WaitWork, self).__init__()
         self.arg = arg
         self.tool = self.wait
+
     def wait(self):
         while self.arg > 0:
             self.arg -= 1
             yield False
-        yield True 
+        yield True
 
-# class ChunkWork(Work)        
 
 class ChangeWork(Work):
-    def __init__(self,addPos,type):
+    def __init__(self, add_pos, work_type):
         super(ChangeWork, self).__init__()
-        self.addPos = addPos
-        self.type = type
-        self.tool = self.changeIterator
+        self.add_pos = add_pos
+        self.type = work_type
+        self.tool = self.change_iterator
 
-    def changeIterator(self):
-        pos = flooredTuple(self.addPos)     
+    def change_iterator(self):
+        pos = floored_tuple(self.add_pos)
 
-        refresh = set() 
-        
-        newPos = Vector(pos)
+        refresh = set()
+
+        new_pos = Vector(pos)
         for dv in logic.BLAST_DELTA:
-            chunk,voxel = logic.chunks.checkRay(newPos+dv)
-            if voxel and voxel.val!=self.type:
+            chunk, voxel = logic.chunks.raycast(new_pos + dv)
+            if voxel and voxel.val != self.type:
                 voxel.val = self.type
-                refresh.add(chunk.getKey())
+                refresh.add(chunk.get_key())
 
-            if dv.length>=0.93*logic.RADIUS:
-                obj = scene.addObject("Cube",own,5)
-                obj.orientation = (0,0,0)
-                obj.worldPosition = newPos+dv
+            if dv.length >= 0.93 * logic.RADIUS:
+                obj = scene.addObject("Cube", own, 5)
+                obj.orientation = 0, 0, 0
+                obj.worldPosition = new_pos + dv
             yield False
 
-        toSpawn = set()
+        to_spawn = set()
         for key in refresh:
             c = logic.chunks.get(key)
             if c:
-                for i in range((CHUNK_SIZE+1)*3):
-                    c.generateFacesByStep(i) 
-                    yield False                
+                for i in range((CHUNK_SIZE + 1) * 3):
+                    c.generate_faces_by_index(i)
+                    yield False
                 yield False
-                toSpawn |= set( logic.chunks.update(key,genFaces=False) )
+                to_spawn |= set(logic.chunks.update(key, gen_faces=False))
                 yield False
-        for key in toSpawn:
+        for key in to_spawn:
             c = logic.chunks[key]
-            for i in range((CHUNK_SIZE+1)*3):
-                c.generateFacesByStep(i) 
-                yield False                
+            for i in range((CHUNK_SIZE + 1) * 3):
+                c.generate_faces_by_index(i)
+                yield False
             yield False
-            logic.chunks.update(key,genFaces=False)
+            logic.chunks.update(key, gen_faces=False)
             yield False
         yield True
 
 
 class RemoveWork(Work):
-    def __init__(self,remPos,givenType):
+    def __init__(self, remove_pos, work_type):
         super(RemoveWork, self).__init__()
-        self.remPos = flooredTuple(remPos)
-        self.type = givenType
-        self.tool = self.changeIterator        
+        self.remove_pos = floored_tuple(remove_pos)
+        self.type = work_type
+        self.tool = self.change_iterator
 
-    def changeIterator(self):
-        chunk,voxel = logic.chunks.checkRay(self.remPos)
+    def change_iterator(self):
+        chunk, voxel = logic.chunks.raycast(self.remove_pos)
 
-        if voxel and voxel.val!=type and not voxel.NPC:
+        if voxel and voxel.val != type and not voxel.NPC:
             voxel.val = self.type
-            obj = scene.addObject("Cube",own,5)
-            obj.worldPosition = self.remPos
+            obj = scene.addObject("Cube", own, 5)
+            obj.worldPosition = self.remove_pos
 
-        toSpawn = set()
+        to_spawn = set()
         if chunk:
-            for i in range((CHUNK_SIZE+1)*3):
-                chunk.generateFacesByStep(i) 
-            toSpawn |= set( logic.chunks.update(chunk.getKey(),genFaces=False) )
+            for i in range((CHUNK_SIZE + 1) * 3):
+                chunk.generate_faces_by_index(i)
+            to_spawn |= set(logic.chunks.update(chunk.get_key(), gen_faces=False))
         yield True
-
-        
