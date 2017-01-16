@@ -1,18 +1,18 @@
 import os
 from time import time
 from math import floor, sin
-from Chunk import *
 from bge import logic, events
 from mathutils import Vector
-from work import *
+
+from work import ChangeWork, RemoveWork
+from chunk import ChunkManager, MAP_SIZE, CHUNK_SIZE, COLORS, tuple_to_chunk_key, floored_tuple, tuple_to_index
 
 scene = logic.getCurrentScene()
-cont = logic.getCurrentController()
-own = cont.owner
+own = "World_manager"
 logic.counter = 0
 
 
-def main():
+def init_game():
     # clear console
     os.system("cls")
 
@@ -205,7 +205,7 @@ def raycast(checkPos):
     chunk = logic.chunks.get(chunkKey)
 
     if chunk:
-        localPos = floor_tuple(Vector(checkPos) - Vector(chunkKey))
+        localPos = floored_tuple(Vector(checkPos) - Vector(chunkKey))
 
         voxelIndex = tuple_to_index(localPos)
         if chunk.voxels[voxelIndex]:
@@ -298,24 +298,3 @@ def mark(cont):
     if voxel:
         logic.marker = Vector(hit_pos) + normal
         print('marker', logic.marker, chunk.pos)
-
-
-def filter_manager(cont):
-    try:
-        logic.shaders
-    except:
-        logic.shaders = {1: False, 2: False, 3: False, 4: False}
-    shaders = logic.shaders
-
-    keyboard = logic.keyboard
-    JUST_ACTIVATED = logic.KX_INPUT_JUST_ACTIVATED
-
-    for i, keyEvent in enumerate([events.ONEKEY, events.TWOKEY, events.THREEKEY, events.FOURKEY]):
-
-        if keyboard.events[keyEvent] == JUST_ACTIVATED:
-            key = i + 1
-            if not shaders[key]:
-                cont.activate('F' + str(key))
-            else:
-                cont.activate('R' + str(key))
-            shaders[key] = not shaders[key]

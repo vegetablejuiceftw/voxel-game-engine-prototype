@@ -1,11 +1,12 @@
-from Chunk import *
 from bge import logic
 from mathutils import Vector
 from time import time
 from random import random, randint
 from heapq import *
 from collections import deque
-from work import *
+
+from work import RemoveWork
+from chunk import floored_tuple
 
 scene = logic.getCurrentScene()
 
@@ -183,7 +184,7 @@ class PathGenerator:
         _, voxel = logic.chunks.raycast(pos)
         if voxel:
             trace, last = voxel.trace
-            obj = scene.addObject("aCube", "sun", time)
+            obj = scene.addObject("PathCube", "sun", time)
             obj.orientation = 0, 0, 0
             obj.worldScale = scale
             obj.worldPosition = pos
@@ -544,7 +545,7 @@ class HybridPathGenerator(PathGenerator):
 
         path = [DestructivePathObject(node_key)]
         _, parent = cost_map[node_key]
-        while parent != None:
+        while parent is not None:
             if len(path) > 300:
                 print("### a path larger than 300")
                 break

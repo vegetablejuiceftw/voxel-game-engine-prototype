@@ -1,7 +1,8 @@
 from time import time
 from bge import logic
 from mathutils import Vector
-from Chunk import *
+
+from chunk import floored_tuple, CHUNK_SIZE
 
 scene = logic.getCurrentScene()
 cont = logic.getCurrentController()
@@ -85,7 +86,7 @@ class ChangeWork(Work):
                 refresh.add(chunk.get_key())
 
             if dv.length >= 0.93 * logic.RADIUS:
-                obj = scene.addObject("Cube", own, 5)
+                obj = scene.addObject("Explosion", own, 5)
                 obj.orientation = 0, 0, 0
                 obj.worldPosition = new_pos + dv
             yield False
@@ -123,7 +124,7 @@ class RemoveWork(Work):
 
         if voxel and voxel.val != type and not voxel.NPC:
             voxel.val = self.type
-            obj = scene.addObject("Cube", own, 5)
+            obj = scene.addObject("Explosion", own, 5)
             obj.worldPosition = self.remove_pos
 
         to_spawn = set()

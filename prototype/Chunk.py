@@ -1,8 +1,9 @@
-from Perlin import Noise
 from time import time
 from random import randint
 from math import floor
 from collections import Counter
+
+from perlin import Noise
 
 MAP_SIZE = 2
 CHUNK_SEED = "Cupcakes1"

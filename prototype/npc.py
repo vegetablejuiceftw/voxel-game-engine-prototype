@@ -1,10 +1,15 @@
-from Chunk import *
 from bge import logic, render
 from mathutils import Vector
 from time import time
 from random import random, choice
-from PathFinder import *
-from animus import *
+
+from path_finder import (
+    POSSIBLE_MOVES_DICT, is_air, is_solid, is_npc, PathGenerator, PathObject, POSSIBLE_MOVES, PathManager,
+    NearestTargetPathGenerator,
+    HybridPathGenerator
+)
+from animus import AnimusAlpha
+from chunk import floored_tuple
 
 scene = logic.getCurrentScene()
 logic.npc = []
