@@ -82,7 +82,7 @@ class PathObject(object):
     def complete(self, worker):
         yield PathObject.PATH_WAIT
         while True:
-            if not worker.is_tired():
+            if worker.energy > 0.01:
                 valid_move = worker.relative_move(Vector(self.pos))
                 if valid_move:
                     worker.walk_and_expend()
@@ -117,7 +117,7 @@ class DestructivePathObject(PathObject):
                             else:
                                 break
 
-                valid_move = worker - Vector(self.pos)
+                valid_move = worker.relative_move(Vector(self.pos))
                 if valid_move:
                     worker.energy -= 0.3
                     yield PathObject.PATH_SUCCESS
@@ -138,7 +138,7 @@ class PathManager:
 
     def solve_paths(self):
         while True:
-            if not len(self.tasks):
+            if not self.tasks:
                 yield True
                 continue
             path_to_be_worked = self.tasks.popleft()
@@ -147,6 +147,7 @@ class PathManager:
                 yield False
 
     def tick(self, limit=0.005):
+        # TODO: move time management into task
         start = time()
         while time() - start < limit:
             free = next(self.work)
@@ -181,6 +182,7 @@ class PathGenerator:
 
     @staticmethod
     def visual(pos, color, time, scale=(1, 1, 1)):
+        return
         _, voxel = logic.chunks.raycast(pos)
         if voxel:
             trace, last = voxel.trace
@@ -595,7 +597,7 @@ class HybridPathGenerator(PathGenerator):
                 continue
 
             cost_map[node_key] = (current_cost, parent)
-            # atleast remember this
+            # at least remember this
             current_best.check(heur, parent)
 
             # search flood visual
@@ -752,4 +754,118 @@ class HybridPathGenerator(PathGenerator):
 
         print('best effort path', len(q), counter_discovered, loop_counter)
         client.path = self.back_track(current_best.item, cost_map, success=False)
+        yield False
+
+
+class SimplePathGenerator:
+    BEST_COMPARATOR = BestOf
+
+    def __init__(self, start, end, client, search_limit=100, time_factor=0.005, enable_visual=False):
+        self.start = tuple(start)
+        self.end = tuple(end)
+        self.client = client
+        self.search_limit = search_limit
+        self.time_factor = time_factor
+        self.enable_visual = enable_visual or True
+
+    @staticmethod
+    def visual(pos, color, time, scale=(1, 1, 1)):
+        voxel = logic.chunks.quick_voxel(pos)
+        if voxel:
+            trace, last = voxel.trace
+            obj = scene.addObject("PathCube", "sun", time)
+            obj.orientation = 0, 0, 0
+            obj.worldScale = scale
+            obj.worldPosition = pos
+            obj.color = 1 - trace / 40, color[1] * trace / 40, color[2], color[3]
+
+    def back_track(self, node_key, cost_map, success=True):
+        if not node_key:
+            print('no node_key')
+            return PathMaster(None)
+
+        path = [PathObject(node_key)]
+        _, parent = cost_map[node_key]
+        while parent is not None:
+            self.visual(parent, (0, 0, 0, 0.3), 80)
+            path.append(PathObject(parent))
+            _, parent = cost_map[parent]
+
+        print("Path generated, size {}".format(len(path) - 1))
+        return PathMaster(path[:-1], success=success)
+
+    def solve(self):
+        time_start = time()
+
+        current_best = self.BEST_COMPARATOR()
+        possible_moves = POSSIBLE_MOVES_DICT.items()
+        chunks_manager = logic.chunks
+
+        start, end, client = self.start, self.end, self.client
+        end_x, end_y, end_z = end
+
+        walk_queue = [(0, 0, 0, -1, start, None, [])]
+        dig_queue = []
+        cost_map = {}
+
+        counter_discovered = 0
+        tick_start = time()
+        while walk_queue and counter_discovered < self.search_limit:
+            # resting interval
+            if time() - tick_start > self.time_factor:
+                yield True
+                tick_start = time()
+
+            current_score, current_cost, current_destruction, current_heur, node_key, parent, to_be_removed = heappop(walk_queue)
+
+            # search end criteria
+            # if not current_heur:
+            #     cost_map[node_key] = current_score, parent
+            #     client.path = self.back_track(node_key, cost_map)
+            #     break
+
+            # has already been discovered?
+            old_cost = cost_map.get(node_key, (999090999090,))[0]
+            if old_cost <= current_score:
+                continue
+
+            cost_map[node_key] = current_score, parent
+            # at least remember this
+            current_best.check(current_heur, parent)
+
+            # search flood visual
+            # if self.enable_visual:
+            #     self.visual(node_key, (0.1, 1, 0.1, 0.6), 60)
+
+            counter_discovered += 1
+
+            node_x, node_y, node_z = node_key
+            for delta_vector, airspace in possible_moves:
+                new_x, new_y, new_z = node_x + delta_vector[0], node_y + delta_vector[1], node_z + delta_vector[2]
+
+                ground = chunks_manager.quick_voxel((new_x, new_y, new_z - 1))
+                if not is_solid(ground):
+                    continue
+
+                for delta_air_x, delta_air_y, delta_air_z in airspace:
+                    new_air_pos = (
+                        node_x + delta_air_x,
+                        node_y + delta_air_y,
+                        node_z + delta_air_z
+                    )
+                    if not is_air(chunks_manager.quick_voxel(new_air_pos)):
+                        break
+                else:
+                    H = abs(end_x - new_x) + abs(end_y - new_y) + abs(end_z - new_z)
+                    G = current_cost + 1
+                    F = G + H
+                    new_pos = new_x, new_y, new_z
+                    if cost_map.get(new_pos, (999090999090,))[0] > F:
+                        heappush(walk_queue, (F, G, 0, H, new_pos, node_key, []))
+
+        else:
+            client.path = self.back_track(current_best.item, cost_map, success=False)
+            print("failed path")
+        print(time() - time_start, "path time", counter_discovered)
+
         yield False

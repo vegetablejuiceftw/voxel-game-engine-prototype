@@ -6,10 +6,12 @@ from random import random, choice
 from path_finder import (
     POSSIBLE_MOVES_DICT, is_air, is_solid, is_npc, PathGenerator, PathObject, POSSIBLE_MOVES, PathManager,
     NearestTargetPathGenerator,
-    HybridPathGenerator
+    HybridPathGenerator,
+    SimplePathGenerator
 )
 from animus import AnimusAlpha
 from chunk import floored_tuple
+
 
 scene = logic.getCurrentScene()
 logic.npc = []
@@ -279,7 +281,7 @@ class Human(NPC):
         self.task = self.travel()
         self.stupid = False
         self.info.text = 'I am Human.'
-        self.path_generator = path_generator
+        self.path_generator = SimplePathGenerator
 
     def tick(self):
         self.gravity()
@@ -337,15 +339,12 @@ def iterate_npc(cont):
     if not npc_count:
         return
 
-    epoch = time() // logic.NPC_TIME_CONSTANT
+    start_time = time()
+    epoch = start_time // logic.NPC_TIME_CONSTANT
 
     if logic.NPC_TICK_COUNTER != epoch:
-
         if npc_count > logic.NPC_CURRENT_INDEX:
-            start_time = time()
-            temp_counter = 0
-            while time() - start_time < 0.004 and npc_count > logic.NPC_CURRENT_INDEX and temp_counter < 200:
-                temp_counter += 1
+            while time() - start_time < 0.004 and npc_count > logic.NPC_CURRENT_INDEX:
                 npc = logic.npc[logic.NPC_CURRENT_INDEX]
                 if not npc.alive:
                     logic.npc.remove(npc)

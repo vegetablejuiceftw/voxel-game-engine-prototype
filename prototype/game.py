@@ -74,7 +74,7 @@ def draw(chunk, faces):
 
     for index in range(face_count):
         T, A, B, C, D, N = faces[index]
-        face = [A, B, C, D]
+        face = A, B, C, D
 
         for v_index in range(4):
             vertex = mesh.getVertex(0, index * 4 + v_index)
@@ -82,11 +82,10 @@ def draw(chunk, faces):
             vertex.setXYZ(face[v_index])
             if T == 1:
                 c = list(COLORS[T])
-                c[1] = c[1] / 2 + abs(sin(vertex.z) / 2) * 0.25 + 0.12
+                c[1] = abs(sin(vertex.z)) * 0.35 + 0.4
                 vertex.setRGBA(c)
             else:
                 vertex.setRGBA(COLORS[T])
-
             vertex.setNormal(N)
 
     for index in range(face_count, mesh.numPolygons):
@@ -115,7 +114,7 @@ def input_events(cont):
         build(cont)
     if mouse.events[events.LEFTMOUSE] == JUST_ACTIVATED:
         blast(cont)
-    if mouse.events[events.MIDDLEMOUSE] == JUST_ACTIVATED:
+    if mouse.events[events.MIDDLEMOUSE] == JUST_ACTIVATED or keyboard.events[events.F12KEY] == JUST_ACTIVATED:
         mark(cont)
 
     if mouse.events[events.WHEELUPMOUSE]:
