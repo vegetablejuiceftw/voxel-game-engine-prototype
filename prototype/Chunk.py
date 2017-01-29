@@ -21,8 +21,8 @@ VOXEL_MAP = {-1: [-1, -1, -1, -1, -1, -1],
              4: [4, 4, 4, 4, 4, 4],
              5: [5, 5, 5, 5, 5, 5],
              }
-GREEN = (0, 200, 0, 1)
-DARK_GREEN = GREEN
+GREEN = (0, 0.8, 0, 1)
+DARK_GREEN = (0, 0.3, 0, 1)
 BROWN = (0.6, 0.3, 0.0, 1)
 GRAY = (0.3, 0.3, 0.3, 1)
 DARK_BROWN = (0.3, 0.1, 0.0, 1)
@@ -226,11 +226,20 @@ class ChunkManager:
 
         if chunk_key in self._map:
             chunk = self.init_chunk(chunk_key)
-            local_pos = (position[0] - chunk_key[0], position[1] - chunk_key[1], position[2] - chunk_key[2])
+            local_pos = position[0] - chunk_key[0], position[1] - chunk_key[1], position[2] - chunk_key[2]
 
             voxel_index = tuple_to_index(local_pos)
             return chunk, chunk.voxels.get(voxel_index)
         return None, None
+
+    def quick_voxel(self, position):
+        chunk_key = tuple_to_chunk_key(position)
+        if chunk_key not in self._map:
+            return
+        chunk = self._map[chunk_key]
+        local_pos = position[0] - chunk_key[0], position[1] - chunk_key[1], position[2] - chunk_key[2]
+        voxel_index = tuple_to_index(local_pos)
+        return chunk.voxels.get(voxel_index)
 
 
 class Chunk:

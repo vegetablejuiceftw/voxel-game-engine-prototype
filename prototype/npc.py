@@ -119,7 +119,7 @@ class NPC(AnimusAlpha):
             voxel.NPC = self
 
     def recharge(self):
-        self.energy += time() - self.last_tick
+        self.energy += time() * 5 - self.last_tick
         self.last_tick = time()
 
     def move(self, vector):
@@ -290,7 +290,7 @@ class Human(NPC):
 
     def path_generator_factory(self):
         start = floored_tuple(self.pos)
-        return self.path_generator(start, logic.marker, self, search_limit=9000)
+        return self.path_generator(start, logic.marker, self, search_limit=4000)
 
 
 class StateWolf(NPC):

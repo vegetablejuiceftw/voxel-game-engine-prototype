@@ -117,10 +117,14 @@ def input_events(cont):
     if mouse.events[events.MIDDLEMOUSE] == JUST_ACTIVATED or keyboard.events[events.F12KEY] == JUST_ACTIVATED:
         mark(cont)
 
+    radius = logic.RADIUS
     if mouse.events[events.WHEELUPMOUSE]:
-        logic.RADIUS = min(10, logic.RADIUS + 0.10)
+        radius = min(10, logic.RADIUS + 0.10)
     if mouse.events[events.WHEELDOWNMOUSE]:
-        logic.RADIUS = max(0, logic.RADIUS - 0.10)
+        radius = max(0, logic.RADIUS - 0.10)
+    if logic.RADIUS != radius:
+        logic.RADIUS = radius
+        logic.BLAST_DELTA = blast_sphere(logic.RADIUS)
 
     if not own.get('select'):
         own['select'] = 1
@@ -131,7 +135,6 @@ def input_events(cont):
     if keyboard.events[events.F3KEY]:
         own['select'] = 3
 
-    logic.BLAST_DELTA = blast_sphere(logic.RADIUS)
     own = cont.owner
     own['radious'] = logic.RADIUS
 
@@ -214,6 +217,8 @@ def raycast(checkPos):
 
 
 def blast_sphere(radius):
+    unit_sized = round(radius, 1) == int(radius)
+    print("SPHERE", unit_sized)
     # cube if radius is integer
     casualty = []
     bR = int(radius)
@@ -221,7 +226,7 @@ def blast_sphere(radius):
         for y in range(-bR, bR + 1):
             for z in range(-bR, bR + 1):
                 v = Vector((x, y, z))
-                if radius == int(radius) or v.length <= radius:
+                if unit_sized or v.length <= radius:
                     casualty.append(v)
     return casualty
 
