@@ -4,9 +4,8 @@ from time import time
 from random import random, choice
 
 from path_finder import (
-    POSSIBLE_MOVES_DICT, is_air, is_solid, is_npc, PathGenerator, PathObject, POSSIBLE_MOVES, PathManager,
+    POSSIBLE_MOVES_DICT, is_air, is_solid, is_npc, PathObject, POSSIBLE_MOVES, PathManager,
     NearestTargetPathGenerator,
-    HybridPathGenerator,
     SimplePathGenerator
 )
 from animus import AnimusAlpha
@@ -178,7 +177,7 @@ class NPC(AnimusAlpha):
 
     def path_generator_factory(self):
         start = floored_tuple(self.pos)
-        return PathGenerator(start, logic.marker, self)
+        return SimplePathGenerator(start, logic.marker, self)
 
     def check_for_food(self):
         pass
@@ -276,12 +275,12 @@ class Wolf(NPC):
 
 
 class Human(NPC):
-    def __init__(self, arg, path_generator=HybridPathGenerator):
+    def __init__(self, arg, path_generator=SimplePathGenerator):
         super(Human, self).__init__(arg)
         self.task = self.travel()
         self.stupid = False
         self.info.text = 'I am Human.'
-        self.path_generator = SimplePathGenerator
+        self.path_generator = path_generator
 
     def tick(self):
         self.gravity()
@@ -314,7 +313,7 @@ class StateWolf(NPC):
 
     def path_generator_factory(self):
         start = floored_tuple(self.pos)
-        return NearestTargetPathGenerator(start, Sheep, self, search_limit=200)
+        return NearestTargetPathGenerator(start, Sheep, self, search_limit=50)
 
 
 def init_human(cont):

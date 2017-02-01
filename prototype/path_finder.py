@@ -10,10 +10,7 @@ from chunk import floored_tuple
 
 scene = logic.getCurrentScene()
 
-# POSSIBLE_MOVES = [  (-1, -1, 0), (-1, 0, 0), (-1, 1, 0), (0, -1, 0), (0, 1, 0), (1, -1, 0), (1, 0, 0), (1, 1, 0),
-#             (-1, 0, -1), (0, -1, -1), (0, 1, -1), (1, 0, -1),
-#             (-1, 0, 1), (0, -1, 1), (0, 1, 1), (1, 0, 1)]
-
+# TODO: different moves for different creatures
 POSSIBLE_MOVES_DICT = {
     (-1, -1, 0): ((0, -1, 0), (-1, 0, 0), (-1, -1, 0)),
     (-1, 0, 0): ((-1, 0, 0),),
@@ -146,13 +143,8 @@ class PathManager:
             while next(path_generator):
                 yield False
 
-    def tick(self, limit=0.005):
-        # TODO: move time management into task
-        start = time()
-        while time() - start < limit:
-            free = next(self.work)
-            if free:
-                return
+    def tick(self):
+        next(self.work)
 
 
 class BestOf(object):
@@ -167,607 +159,22 @@ class BestOf(object):
 
 class RandomOf(BestOf):
     def check(self, value, item):
-        if self.value is None or random() > 0.99:
+        if self.value is None or self.value * random() > value:
             self.item, self.value = item, value
-
-
-class PathGenerator:
-    BEST_COMPARATOR = BestOf
-
-    def __init__(self, start, end, client, search_limit=400):
-        self.start = start
-        self.end = end
-        self.client = client
-        self.search_limit = search_limit
-
-    @staticmethod
-    def visual(pos, color, time, scale=(1, 1, 1)):
-        return
-        _, voxel = logic.chunks.raycast(pos)
-        if voxel:
-            trace, last = voxel.trace
-            obj = scene.addObject("PathCube", "sun", time)
-            obj.orientation = 0, 0, 0
-            obj.worldScale = scale
-            obj.worldPosition = pos
-            obj.color = 1 - trace / 40, color[1] * trace / 40, color[2], color[3]
-
-    @staticmethod
-    def dist(a, b):
-        return abs(a[0] - b[0]) + abs(a[1] - b[1]) + abs(a[2] - b[2])
-
-    def back_track(self, node_key, cost_map, success=True):
-
-        if not node_key:
-            print('really failed')
-            return PathMaster(None)
-
-        path = [PathObject(node_key)]
-        _, parent = cost_map[node_key]
-        while parent is not None:
-            if len(path) > 300:
-                print("### a path larger than 300")  # TODO lets not generate a path that big to begin with
-                break
-            path.append(PathObject(parent))
-            _, parent = cost_map[parent]
-
-        for node in path:
-            self.visual(node.pos, (0, 0, 0, 0.3), 80)
-
-        path.pop(-1)
-        return PathMaster(path, success=success)
-
-    def heur(self, current, debug=False):
-        return abs(self.end[0] - current[0]) + abs(self.end[1] - current[1]) + abs(self.end[2] - current[2])
-
-    def solve(self):
-        start, end, client = self.start, self.end, self.client
-        q = [(0, 0, start, None)]
-        cost_map = {}
-
-        counter_discovered = 0
-        current_best = self.BEST_COMPARATOR()
-
-        while q and counter_discovered < self.search_limit:
-            # resting interval
-            if not counter_discovered % 15:
-                yield True
-
-            current_cost, current_g, node_key, parent = heappop(q)
-
-            # search end criteria
-            heur = self.heur(node_key)
-            if heur <= 1:
-                cost_map[node_key] = (current_cost, parent)
-                client.path = self.back_track(node_key, cost_map)
-                break
-
-            # has already been discovered?
-            old_cost = cost_map.get(node_key, (999090999090,))[0]
-            if old_cost <= current_cost:
-                continue
-
-            cost_map[node_key] = (current_cost, parent)
-            current_best.check(heur, parent)
-
-            # search flood visual
-            self.visual(node_key, (0.1, 1, 0.1, 0.6), 60)
-
-            counter_discovered += 1
-
-            for delta_vector, airspace in POSSIBLE_MOVES_DICT.items():
-
-                new_pos = (node_key[0] + delta_vector[0], node_key[1] + delta_vector[1], node_key[2] + delta_vector[2])
-
-                is_valid = False
-
-                H = self.heur(new_pos)
-                if H == 0:
-                    is_valid = True
-                else:
-                    for delta_air_vector in airspace:
-                        new_air_pos = (
-                            node_key[0] + delta_air_vector[0],
-                            node_key[1] + delta_air_vector[1],
-                            node_key[2] + delta_air_vector[2]
-                        )
-                        _, voxel = logic.chunks.raycast(new_air_pos)
-                        if not is_air(voxel): break
-                    else:
-                        _, ground = logic.chunks.raycast((new_pos[0], new_pos[1], new_pos[2] - 1))
-                        if is_solid(ground):
-                            is_valid = True
-
-                if is_valid:
-                    G = current_g + 1
-                    F = G + H
-
-                    neighbour_cost = cost_map.get(new_pos, (999090999090,))[0]
-                    if neighbour_cost <= F:
-                        continue
-
-                    heappush(q, (F, G, new_pos, node_key))
-        else:
-            client.path = self.back_track(current_best.item, cost_map, success=False)
-            print("failed path,")
-        yield False
-
-
-class NearestTargetPathGenerator(PathGenerator):
-    BEST_COMPARATOR = RandomOf
-
-    def heur(self, current, debug=False):
-        voxel = logic.chunks.raycast(current)[1]
-        if not voxel:
-            return 99999999
-        if voxel.NPC and isinstance(voxel.NPC, self.end):
-            return 0
-        trace, caster = voxel.trace
-        if caster and not issubclass(caster, self.end):
-            trace = 60
-        dist = self.dist(current, self.start)
-        if dist < 10:
-            dist = 0
-        return 10 + dist + randint(0, 1) + trace // 2
-
-
-class DestructPathGenerator(PathGenerator):
-    def back_track(self, node_key, cost_map, success=True):
-        if not node_key:
-            print('really failed')
-            return PathMaster(None)
-
-        path = [DestructivePathObject(node_key)]
-        _, parent = cost_map[node_key]
-        while parent is not None:
-            if len(path) > 300:
-                print("### a path larger than 300")
-                break
-            path.append(DestructivePathObject(parent))
-            _, parent = cost_map[parent]
-
-        for node in path:
-            self.visual(node.pos, (1, 1, 1, 1), 380, scale=(0.5, 0.5, 0.5))
-
-        path.pop(-1)
-        return PathMaster(path, success=success)
-
-    def solve(self):
-        start, end, client = self.start, self.end, self.client
-        q = [(0, 0, start, None, set())]
-        cost_map = {}
-
-        counter_discovered = 0
-
-        current_best = BestOf()
-
-        blasted_dict = {None: set()}
-
-        loop_counter = 1
-        while q and counter_discovered < self.search_limit:
-
-            loop_counter += 1
-            # resting interval
-            if not counter_discovered % 15:
-                yield True
-
-            current_cost, current_g, node_key, parent, remove_list = heappop(q)
-
-            # search end criteria
-            heur = self.heur(node_key)
-            if heur <= 1:
-                print('best path', len(q), counter_discovered, loop_counter)
-                print('nodecount', len(q) + loop_counter, 'discovered', counter_discovered)
-                cost_map[node_key] = (current_cost, parent)
-                client.path = self.back_track(node_key, cost_map)
-                break
-
-            # has already been discovered?
-            if node_key in cost_map:
-                continue
-
-            cost_map[node_key] = (current_cost, parent)
-
-            # currently removed blocks
-            parent_blasted = blasted_dict[parent]
-            current_blasted = set(parent_blasted)
-            if remove_list:
-                current_blasted |= set(remove_list)
-            blasted_dict[node_key] = current_blasted
-
-            current_best.check(heur, parent)
-
-            # search flood visual
-            self.visual(node_key, (0.1, 1, 0.1, 0.6), 60)
-
-            counter_discovered += 1
-
-            for delta_vector, airspace in POSSIBLE_MOVES_DICT.items():
-
-                new_pos = (node_key[0] + delta_vector[0], node_key[1] + delta_vector[1], node_key[2] + delta_vector[2])
-                if new_pos in cost_map:
-                    continue
-
-                new_ground_pos = (new_pos[0], new_pos[1], new_pos[2] - 1)
-                if new_ground_pos in current_blasted:
-                    continue
-
-                _, ground = logic.chunks.raycast(new_ground_pos)
-                if not is_solid(ground):
-                    continue
-
-                _, voxel = logic.chunks.raycast(new_pos)
-                H = self.heur(new_pos)
-                G = current_g + 1
-
-                rem_list = []
-
-                delta_key = (new_pos[0] - node_key[0], new_pos[1] - node_key[1], new_pos[2] - node_key[2])
-                for dv in POSSIBLE_MOVES_DICT[delta_key]:
-                    check_pos = (node_key[0] + dv[0], node_key[1] + dv[1], node_key[2] + dv[2])
-                    _, current_voxel = logic.chunks.raycast(check_pos)
-
-                    if is_solid(current_voxel) and not check_pos in current_blasted:
-                        rem_list.append(check_pos)
-                        G += 2
-
-                F = G + H
-                heappush(q, (F, G, new_pos, node_key, rem_list))
-
-        else:
-            print('best effort path', len(q), counter_discovered, loop_counter)
-            client.path = self.back_track(current_best.item, cost_map, success=False)
-
-        yield False
-
-
-class DestructMemoryPathGenerator(PathGenerator):
-    def back_track(self, currentIndex, parentChain, success=True):
-        if not currentIndex:
-            print('really failed')
-            return PathMaster(None)
-
-        path = []
-        while currentIndex != None:
-            node, currentIndex = parentChain[currentIndex]
-            if len(path) > 300:
-                print("### a path larger than 300")
-            path.append(DestructivePathObject(node))
-
-        for node in path:
-            self.visual(node.pos, (1, 1, 1, 1), 380, scale=(0.5, 0.5, 0.5))
-
-        path.pop(-1)
-        return PathMaster(path, success=success)
-
-    def solve(self):
-
-        start, end, client = self.start, self.end, self.client
-        q = [(0, 0, start, None, 0)]
-        cost_map = {}
-
-        counter_discovered = 0
-
-        current_best = BestOf()
-
-        blast_map = [[]]
-        parentChain = []
-
-        loop_counter = 1
-        while q and counter_discovered < self.search_limit:
-
-            loop_counter += 1
-
-            # resting interval
-            if not counter_discovered % 15:
-                yield True
-
-            current_cost, current_g, node_key, parentChainIndex, remove_listIndex = heappop(q)
-            remove_list = blast_map[remove_listIndex]
-
-            # search end criteria
-            heur = self.heur(node_key)
-            if heur <= 1:
-                print('best path', len(q), counter_discovered, loop_counter)
-                print('nodecount', len(q) + loop_counter, 'discovered', counter_discovered)
-                parentChain.append((node_key, parentChainIndex))
-                print('parentChainSize', len(parentChain))
-                client.path = self.back_track(len(parentChain) - 1, parentChain)
-                break
-
-            cost_map_key = (node_key, tuple(remove_list))
-
-            # has already been discovered?
-            old_cost = cost_map.get(cost_map_key, 999090999090)
-            if old_cost <= current_cost:
-                continue
-            cost_map[cost_map_key] = current_cost
-
-            parentChain.append((node_key, parentChainIndex))
-            node_chain_index = len(parentChain) - 1
-
-            # atleast remember this
-            current_best.check(heur, node_chain_index)
-
-            # search flood visual
-            self.visual(node_key, (0.1, 1, 0.1, 0.6), 60)
-
-            counter_discovered += 1
-
-            for delta_vector, airspace in POSSIBLE_MOVES_DICT.items():
-
-                new_pos = (node_key[0] + delta_vector[0], node_key[1] + delta_vector[1], node_key[2] + delta_vector[2])
-                if new_pos in cost_map:
-                    continue
-
-                new_ground_pos = (new_pos[0], new_pos[1], new_pos[2] - 1)
-                if new_ground_pos in remove_list:
-                    continue
-
-                _, ground = logic.chunks.raycast(new_ground_pos)
-                if not is_solid(ground):
-                    continue
-
-                _, voxel = logic.chunks.raycast(new_pos)
-                H = self.heur(new_pos)
-
-                G = current_g + 1
-
-                rem_list = list(remove_list)
-
-                delta_key = (new_pos[0] - node_key[0], new_pos[1] - node_key[1], new_pos[2] - node_key[2])
-                for dv in POSSIBLE_MOVES_DICT[delta_key]:
-                    check_pos = (node_key[0] + dv[0], node_key[1] + dv[1], node_key[2] + dv[2])
-                    _, current_voxel = logic.chunks.raycast(check_pos)
-
-                    if is_solid(current_voxel) and not check_pos in remove_list:
-                        rem_list.append(check_pos)
-                        G += 2
-
-                new_remove_list_index = len(blast_map)
-                blast_map.append(rem_list)
-
-                F = G + H
-                heappush(q, (F, G, new_pos, node_chain_index, new_remove_list_index))
-
-        else:
-            print('best effort path', len(q), counter_discovered, loop_counter)
-            client.path = self.back_track(current_best.item, parentChain, success=False)
-        yield False
-
-
-class HybridPathGenerator(PathGenerator):
-    SPLIT_RATIO = 0.2
-
-    def back_track(self, node_key, cost_map, success=True):
-
-        if not node_key:
-            print('really failed')
-            return PathMaster(None)
-
-        path = [DestructivePathObject(node_key)]
-        _, parent = cost_map[node_key]
-        while parent is not None:
-            if len(path) > 300:
-                print("### a path larger than 300")
-                break
-            path.append(DestructivePathObject(parent))
-            _, parent = cost_map[parent]
-
-        for node in path:
-            self.visual(node.pos, (1, 1, 1, 1), 380, scale=(0.5, 0.5, 0.5))
-
-        path.pop(-1)
-        return PathMaster(path, success=success)
-
-    def solve(self):
-
-        start, end, client = self.start, self.end, self.client
-        q = [(0, 0, start, None)]
-        cost_map = {}
-
-        counter_discovered = 0
-
-        current_best = BestOf()
-
-        blocked_nodes = []
-
-        loop_counter = 1
-        while q and counter_discovered < self.search_limit * self.SPLIT_RATIO:
-            loop_counter += 1
-            # resting interval
-            if not counter_discovered % 15:
-                yield True
-
-            current_cost, current_g, node_key, parent = heappop(q)
-
-            # search end criteria
-            heur = self.heur(node_key)
-            if heur <= 1:
-                print('hybrid stage 1 resuls', len(q), counter_discovered, loop_counter)
-                print('nodecount', len(q) + loop_counter, 'discovered', counter_discovered)
-                cost_map[node_key] = (current_cost, parent)
-                client.path = self.back_track(node_key, cost_map)
-                yield False
-                return
-
-            # has already been discovered?
-            old_cost = cost_map.get(node_key, (999090999090,))[0]
-            if old_cost <= current_cost:
-                continue
-
-            cost_map[node_key] = (current_cost, parent)
-            # at least remember this
-            current_best.check(heur, parent)
-
-            # search flood visual
-            self.visual(node_key, (0.1, 1, 0.1, 0.6), 60)
-
-            counter_discovered += 1
-
-            for delta_vector, airspace in POSSIBLE_MOVES_DICT.items():
-
-                new_pos = (node_key[0] + delta_vector[0], node_key[1] + delta_vector[1], node_key[2] + delta_vector[2])
-
-                is_valid = False
-
-                H = self.heur(new_pos)
-                if H == 0:
-                    is_valid = True
-                else:
-                    for delta_air_vector in airspace:
-                        new_air_pos = (
-                            node_key[0] + delta_air_vector[0],
-                            node_key[1] + delta_air_vector[1],
-                            node_key[2] + delta_air_vector[2]
-                        )
-                        _, voxel = logic.chunks.raycast(new_air_pos)
-                        if not is_air(voxel):
-                            break
-                    else:
-                        _, ground = logic.chunks.raycast((new_pos[0], new_pos[1], new_pos[2] - 1))
-                        if is_solid(ground):
-                            is_valid = True
-                G = current_g + 1
-                F = G + H
-                if is_valid:
-                    neighbour_cost = cost_map.get(new_pos, (999090999090,))[0]
-                    if neighbour_cost <= F:
-                        continue
-                    heappush(q, (F, G, new_pos, node_key))
-                else:
-                    blocked_nodes.append((F, G, new_pos, node_key))
-
-        # else try option two
-        print(loop_counter, 'mid stage', len(q), counter_discovered, 'blockedListSize', len(blocked_nodes))
-        print('mid_nodecount', len(q) + loop_counter, 'discovered', counter_discovered)
-
-        blasted_dict = {None: set()}
-
-        # re-activate blocked nodes
-        for i, blockedNode in enumerate(blocked_nodes):
-            if not i % 100:
-                yield True
-
-            F, G, new_pos, node_key = blockedNode
-
-            blasted_dict[node_key] = set()
-
-            delta_key = (new_pos[0] - node_key[0], new_pos[1] - node_key[1], new_pos[2] - node_key[2])
-            airspace = POSSIBLE_MOVES_DICT[delta_key]
-
-            new_ground_pos = (new_pos[0], new_pos[1], new_pos[2] - 1)
-
-            _, ground = logic.chunks.raycast(new_ground_pos)
-            if not is_solid(ground):
-                continue
-
-            H = self.heur(new_pos)
-            G = current_g + 1
-
-            rem_list = []
-            for dv in airspace:
-                check_pos = (node_key[0] + dv[0], node_key[1] + dv[1], node_key[2] + dv[2])
-                _, current_voxel = logic.chunks.raycast(check_pos)
-
-                if is_solid(current_voxel):
-                    rem_list.append(check_pos)
-                    G += 2
-
-            F = G + H
-            heappush(q, (F, G, new_pos, node_key, rem_list))
-
-        while q and counter_discovered < self.search_limit:
-            loop_counter += 1
-
-            # resting interval
-            if not counter_discovered % 15:
-                yield True
-
-            current = heappop(q)
-            remove_list = None
-            if len(current) == 5:
-                current_cost, current_g, node_key, parent, remove_list = current
-            else:
-                current_cost, current_g, node_key, parent = current
-
-            # search end criteria
-            heur = self.heur(node_key)
-            if heur <= 1:
-                print(loop_counter, 'stage two path', len(q), counter_discovered)
-                print('nodecount', len(q) + loop_counter, 'discovered', counter_discovered)
-                cost_map[node_key] = (current_cost, parent)
-                client.path = self.back_track(node_key, cost_map)
-                yield False
-                return
-
-            # has already been discovered?
-            if node_key in cost_map:
-                continue
-
-            cost_map[node_key] = (current_cost, parent)
-
-            # currently removed blocks
-            parent_blasted = blasted_dict[parent]
-            current_blasted = set(parent_blasted)
-            if remove_list:
-                current_blasted |= set(remove_list)
-            blasted_dict[node_key] = current_blasted
-
-            current_best.check(heur, parent)
-
-            # search flood visual
-            self.visual(node_key, (0.1, 1, 0.1, 0.6), 60)
-
-            counter_discovered += 1
-
-            for delta_vector, airspace in POSSIBLE_MOVES_DICT.items():
-
-                new_pos = (node_key[0] + delta_vector[0], node_key[1] + delta_vector[1], node_key[2] + delta_vector[2])
-                if new_pos in cost_map:
-                    continue
-
-                new_ground_pos = (new_pos[0], new_pos[1], new_pos[2] - 1)
-                if new_ground_pos in current_blasted:
-                    continue
-
-                _, ground = logic.chunks.raycast(new_ground_pos)
-                if not is_solid(ground):
-                    continue
-
-                H = self.heur(new_pos)
-                G = current_g + 1
-
-                rem_list = []
-
-                delta_key = (new_pos[0] - node_key[0], new_pos[1] - node_key[1], new_pos[2] - node_key[2])
-                for dv in POSSIBLE_MOVES_DICT[delta_key]:
-                    check_pos = (node_key[0] + dv[0], node_key[1] + dv[1], node_key[2] + dv[2])
-                    _, current_voxel = logic.chunks.raycast(check_pos)
-
-                    if is_solid(current_voxel) and check_pos not in current_blasted:
-                        rem_list.append(check_pos)
-                        G += 2
-
-                F = G + H
-                heappush(q, (F, G, new_pos, node_key, rem_list))
-
-        print('best effort path', len(q), counter_discovered, loop_counter)
-        client.path = self.back_track(current_best.item, cost_map, success=False)
-        yield False
 
 
 class SimplePathGenerator:
     BEST_COMPARATOR = BestOf
+    DESTRUCTION_ENABLED = True
 
     def __init__(self, start, end, client, search_limit=100, time_factor=0.005, enable_visual=False, destructive=True):
         self.start = tuple(start)
-        self.end = tuple(end)
+        self.end = tuple(end) if not isinstance(end, type) else end
         self.client = client
         self.search_limit = search_limit
         self.time_factor = time_factor
         self.enable_visual = enable_visual
-        self.destructive = destructive
+        self.destructive = destructive and SimplePathGenerator.DESTRUCTION_ENABLED
 
     @staticmethod
     def visual(pos, color, time, scale=(1, 1, 1)):
@@ -794,21 +201,23 @@ class SimplePathGenerator:
             if len(path) > 1000:
                 print("\n\nI have a bad case of diarrhea\n\n")
                 break
-
-        print("Path generated, size {}".format(len(path) - 1))
         return PathMaster(path[:-1], success=success)
+
+    def heur(self, new_x, new_y, new_z):
+        end_x, end_y, end_z = self.end
+        return abs(end_x - new_x) + abs(end_y - new_y) + abs(end_z - new_z)
 
     def solve(self):
         time_start = time()
 
         current_best = self.BEST_COMPARATOR()
+        heuristic = self.heur
         possible_moves = POSSIBLE_MOVES_DICT.items()
         chunks_manager = logic.chunks
 
-        start, end, client, destructive = self.start, self.end, self.client, self.destructive
-        end_x, end_y, end_z = end
+        start, client, destructive = self.start, self.client, self.destructive
 
-        walk_queue = [(0, 1, 0, sum(map(lambda a: abs(a[0]-a[1]), zip(start, end))), start, None, set())]
+        walk_queue = [(0, 1, 0, heuristic(*start), start, None, set())]
         dig_queue = []
         cost_map = {}
         blasted_dict = {None: set()}
@@ -822,13 +231,15 @@ class SimplePathGenerator:
                 tick_start = time()
 
             queue = dig_queue if not counter_discovered % 4 and dig_queue else (walk_queue or dig_queue)
-            current_score, current_cost, current_destruction, current_heur, node_key, parent, to_be_removed = heappop(queue)
+            current_score, current_cost, current_destruction, current_heur, node_key, parent, to_be_removed = heappop(
+                queue)
 
             # search end criteria
             if not current_heur:
                 cost_map[node_key] = current_cost, parent
                 client.path = self.back_track(node_key, cost_map)
                 break
+
             # has already been discovered?
             if current_destruction and node_key in cost_map:
                 continue
@@ -846,8 +257,8 @@ class SimplePathGenerator:
             current_best.check(current_heur ** 2 / current_cost, parent)
 
             # search flood visual
-            # if self.enable_visual:
-            #     self.visual(node_key, (0.1, 1, 0.1, 0.6), 60)
+            if self.enable_visual:
+                self.visual(node_key, (0.1, 1, 0.1, 0.6), 25)
 
             counter_discovered += 1
 
@@ -877,14 +288,16 @@ class SimplePathGenerator:
                         node_z + delta_air_z
                     )
                     current_voxel = chunks_manager.quick_voxel(new_air_pos)
-                    if not destructive and not is_air(current_voxel):
-                        break
+                    if not destructive:
+                        if not is_air(current_voxel):
+                            break
+                        continue
 
                     elif is_solid(current_voxel) and new_air_pos not in current_blasted:
                         rem_list.add(new_air_pos)
                         D += 2
                 else:
-                    H = abs(end_x - new_x) + abs(end_y - new_y) + abs(end_z - new_z)
+                    H = heuristic(new_x, new_y, new_z)
                     G = current_cost + 1
                     F = G + H + D
 
@@ -892,10 +305,33 @@ class SimplePathGenerator:
                         queue = dig_queue if D else walk_queue
                         heappush(queue, (F, G, D, H, new_pos, node_key, rem_list))
 
-
         else:
             client.path = self.back_track(current_best.item, cost_map, success=False)
-            print("failed path", current_best.item)
-        print(time() - time_start, "path time", counter_discovered)
-
+        print("Path generated, size {}".format(len(client.path.path or []) - 1), "\n", time() - time_start, "path time", counter_discovered)
         yield False
+
+
+class NearestTargetPathGenerator(SimplePathGenerator):
+    BEST_COMPARATOR = RandomOf
+    DESTRUCTION_ENABLED = False
+
+    def __init__(self, start, end, client, search_limit=100, time_factor=0.005, enable_visual=False, destructive=True):
+        super().__init__(start, end, client, search_limit, time_factor, enable_visual, destructive)
+        start_x, start_y, start_z = self.start
+        new_x, new_y, new_z = [randint(-search_limit * 3, search_limit * 3) for _ in range(3)]
+        self.random_target = start_x - new_x,start_y - new_y,start_z - new_z
+
+    def heur(self, new_x, new_y, new_z):
+        end = self.end
+        current = new_x, new_y, new_z
+        voxel = logic.chunks.quick_voxel(current)
+
+        if voxel.NPC and isinstance(voxel.NPC, end):
+            return 0
+
+        trace, caster = voxel.trace
+        if caster and not issubclass(caster, end):
+            trace = 60
+
+        target_x, target_y, target_z = self.random_target
+        return (abs(target_x - new_x) + abs(target_y - new_y) + abs(target_z - new_z)) / 2 + trace
