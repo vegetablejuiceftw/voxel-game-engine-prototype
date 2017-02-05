@@ -1,11 +1,12 @@
 class AnimusAlpha:
     def __init__(self):
-        self.hunger = 0
+        self.hunger = 50
         self.health = 100
         self.energy = 100
+        self.maturity = 0
         self.danger = None
-        self.state = ExploreState(self)
         self.pathing = None
+        self.state = ExploreState(self)
 
     def tick(self):
         self.state = self.state.tick()
@@ -15,6 +16,9 @@ class AnimusAlpha:
 
     def is_tired(self):
         return self.energy < 20
+
+    def motivated(self):
+        return not self.is_tired() or self.is_hungry()
 
     def is_rested(self):
         return self.energy > 70
@@ -38,28 +42,41 @@ class AnimusAlpha:
         food = self.get_food()
         if food:
             food.die()
-            self.hunger = max(self.hunger - 20, 0)
+            self.hunger = 0
+
+    def can_breed(self):
+        return self.maturity >= 100 and not self.is_hungry() and not self.in_danger()
+
+    def breed(self):
+        raise NotImplementedError
+
+    def recharge(self):
+        self.energy = min(self.energy + 1, 100)
 
     def regenerate(self):
+        if not self.is_hungry():
+            self.maturity = min(self.maturity + 0.08, 100)
 
-        self.energy = min(self.energy + 1, 100)
-        self.health = min(self.health + 1, 100)
+        if self.hunger == 100:
+            self.energy = min(self.energy + 2, 100)
+            self.health = min(self.health - 1, 0)
+        else:
+            self.health = min(self.health + 1, 100)
 
-        if self.hunger < 50 and (self.energy < 90 or self.health < 90):
+        if not self.is_hungry() and (self.is_tired() or not self.is_healthy()):
             self.energy = min(self.energy + 2, 100)
             self.health = min(self.health + 2, 100)
+            # digest food
             self.hunger = min(self.hunger + 2, 100)
-
         else:
-            self.hunger = min(self.hunger + 0.5, 100)
+            self.hunger = min(self.hunger + 0.1, 100)
 
     def explore(self):
-        if not self.is_tired():
-            if self.pathing:
-                next(self.pathing)
+        if self.motivated() and self.pathing:
+            next(self.pathing)
 
     def walk_expend(self):
-        self.energy = max(self.energy - 0.3, 0)
+        self.energy = max(self.energy - 1.1, 0)
 
     def suffer_damage(self, damage, cause):
         self.health = max(self.health - damage, 0)
@@ -68,8 +85,8 @@ class AnimusAlpha:
         return "hunger {} health {} energy {} danger {}".format(self.hunger, self.health, self.energy, self.danger)
 
     def status(self):
-        return "{}\nhunger {}\nhealth {}\nenergy {}\ndanger {}".format(
-            self.state.__class__.__name__, self.hunger, self.health, self.energy, self.danger,
+        return "{}\nhunger {:.1f}\nhealth {:.1f}\nenergy {:.1f}\nmaturity {:.1f}".format(
+            self.state.__class__.__name__, self.hunger, self.health, self.energy, self.maturity,
         )
 
 
@@ -102,10 +119,14 @@ class EatState(StateNode):
         self.actor.eat()
         self.actor.regenerate()
 
-    def VEC_NO_FOOD(self):
+    def VEC_NO_FOOD_AND_HUNGRY(self):
         actor = self.actor
-        if not actor.has_food():
+        if not actor.has_food() and actor.is_hungry():
             return ExploreState(actor)
+
+    def VEC_NOT_HUNGRY(self):
+        if not self.actor.is_hungry():
+            return IdleState(self.actor)
 
     def VEC_ATTACKED(self):
         actor = self.actor
@@ -133,10 +154,9 @@ class IdleState(StateNode):
             else:
                 print('should fight')
 
-    def VEC_RESTED_AND_HUNGRY(self):
-        actor = self.actor
-        if actor.is_rested() and actor.is_hungry():
-            return ExploreState(actor)
+    def VEC_HUNGRY(self):
+        if self.actor.is_hungry():
+            return ExploreState(self.actor)
 
 
 class ExploreState(StateNode):
@@ -153,12 +173,8 @@ class ExploreState(StateNode):
         if actor.is_hungry() and actor.has_food():
             return EatState(actor)
 
-    def VEC_TIRED(self):
-        if self.actor.is_tired():
-            return IdleState(self.actor)
-
-    def VEC_LAZY(self):
-        if not self.actor.is_hungry():
+    def VEC_NOT_MOTIVATED(self):
+        if not self.actor.motivated():
             return IdleState(self.actor)
 
     def VEC_ATTACKED(self):

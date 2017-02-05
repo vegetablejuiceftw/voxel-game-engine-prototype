@@ -8,7 +8,7 @@ scene = logic.getCurrentScene()
 cont = logic.getCurrentController()
 own = cont.owner
 
-logic.RADIUS = 2
+logic.RADIUS = None
 logic.BLAST_DELTA = []
 
 

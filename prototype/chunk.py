@@ -1,7 +1,7 @@
-from time import time
 from random import randint
 from math import floor
 from collections import Counter
+from bge import logic
 
 from perlin import Noise
 
@@ -57,19 +57,19 @@ class Voxel:
         return self._NPC
 
     @NPC.setter
-    def NPC(self, value):
-        self._NPC = value
-        if value:
-            self._last = value.__class__
-        self._trace = time()
+    def NPC(self, npc):
+        self._NPC = npc
+        if npc:
+            self._last = npc.__class__
+        self._trace = logic.epoch()
 
     @property
     def trace(self):
         if not self._last:
-            return 40, None
-        trace = min(time() - self._trace, 40)
-        if trace == 40:
-            return 40, None
+            return 100, None
+        trace = min(logic.epoch() - self._trace, 100)
+        if trace == 100:
+            self._last = None
         return trace, self._last
 
     def __str__(self):
@@ -233,6 +233,7 @@ class ChunkManager:
         return None, None
 
     def quick_voxel(self, position):
+        position = floored_tuple(position)
         chunk_key = tuple_to_chunk_key(position)
         if chunk_key not in self._map:
             return

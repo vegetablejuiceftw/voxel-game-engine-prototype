@@ -39,7 +39,7 @@ def init_game():
         print("face_count {}  voxel_count {}".format(face_count, voxel_count))
 
     print('face_count', face_count, ' voxel_count', voxel_count, ' filled-chunk_count', chunk_count)
-    print("FULL time {:.2} sec, max_time of a chunk {:.2}".format(time() - start, max_time))
+    print("FULL time {:.2f} sec, max_time of a chunk {:.2}".format(time() - start, max_time))
 
 
 def create_unique_mesh(request_size, position):
@@ -117,7 +117,7 @@ def input_events(cont):
     if mouse.events[events.MIDDLEMOUSE] == JUST_ACTIVATED or keyboard.events[events.F12KEY] == JUST_ACTIVATED:
         mark(cont)
 
-    radius = logic.RADIUS
+    radius = logic.RADIUS or 2
     if mouse.events[events.WHEELUPMOUSE]:
         radius = min(10, logic.RADIUS + 0.10)
     if mouse.events[events.WHEELDOWNMOUSE]:
@@ -268,7 +268,7 @@ def blast(cont):
             logic.work.append(RemoveWork(hit_pos, 0))
             print("REMOVE")
         elif own.get('select') == 3:
-            _, voxel = logic.chunks.raycast(Vector(hit_pos) + normal)
+            voxel = logic.chunks.quick_voxel(Vector(hit_pos) + normal)
             if voxel.NPC:
                 voxel.NPC.die()
 
@@ -288,7 +288,7 @@ def build(cont):
             logic.work.append(RemoveWork(Vector(hit_pos) + normal, 4))
         elif own.get('select') == 3:
             free_pos = Vector(hit_pos) + normal
-            obj = scene.addObject('Sheep', 'Npc_manager')
+            obj = scene.addObject('Sheep', own)
             obj.worldPosition = free_pos
 
 

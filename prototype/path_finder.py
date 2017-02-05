@@ -10,6 +10,8 @@ from chunk import floored_tuple
 
 scene = logic.getCurrentScene()
 
+DEBUG = False
+
 # TODO: different moves for different creatures
 POSSIBLE_MOVES_DICT = {
     # (-1, -1, 0): ((0, -1, 0), (-1, 0, 0), (-1, -1, 0)),
@@ -32,6 +34,7 @@ POSSIBLE_MOVES_DICT = {
 }
 
 POSSIBLE_MOVES = tuple(POSSIBLE_MOVES_DICT.keys())
+POSSIBLE_MOVES_VECTORS = tuple(map(Vector, POSSIBLE_MOVES))
 
 
 def is_air(voxel):
@@ -55,7 +58,7 @@ class PathMaster:
         return bool(self.path)
 
 
-class PathObject(object):
+class PathObject:
     PATH_SUCCESS = 0
     PATH_WAIT = 1
     PATH_FAIL = 2
@@ -85,7 +88,7 @@ class PathObject(object):
 
                     for dv in POSSIBLE_MOVES_DICT[delta]:
                         check_pos = Vector(worker.pos) + Vector(dv)
-                        chunk, voxel = logic.chunks.raycast(check_pos)
+                        voxel = logic.chunks.quick_voxel(check_pos)
                         if is_solid(voxel):
                             logic.work.append(RemoveWork(check_pos, 0))
                             for i in range(20):
@@ -100,7 +103,8 @@ class PathObject(object):
                     yield PathObject.PATH_SUCCESS
                     break
                 else:
-                    print("PathObject: path has changed")
+                    if DEBUG:
+                        print("PathObject: path has changed")
                     yield PathObject.PATH_FAIL
             yield PathObject.PATH_WAIT
 
@@ -145,7 +149,6 @@ class RandomOf(BestOf):
 
 class SimplePathGenerator:
     BEST_COMPARATOR = BestOf
-    DESTRUCTION_ENABLED = True
 
     def __init__(self, start, end, client, search_limit=100, time_factor=0.005, enable_visual=False, destructive=True):
         self.start = tuple(start)
@@ -154,7 +157,7 @@ class SimplePathGenerator:
         self.search_limit = search_limit
         self.time_factor = time_factor
         self.enable_visual = enable_visual
-        self.destructive = destructive and SimplePathGenerator.DESTRUCTION_ENABLED
+        self.destructive = destructive
 
     @staticmethod
     def visual(pos, color, time, scale=(1, 1, 1)):
@@ -165,11 +168,12 @@ class SimplePathGenerator:
             obj.orientation = 0, 0, 0
             obj.worldScale = scale
             obj.worldPosition = pos
-            obj.color = 1 - trace / 40, color[1] * trace / 40, color[2], color[3]
+            obj.color = 1 - trace / 100, color[1] * trace / 100, color[2], color[3]
 
     def back_track(self, node_key, cost_map, success=True):
         if not node_key:
-            print('no node_key')
+            if DEBUG:
+                print('no node_key')
             return PathMaster(None)
 
         path = [PathObject(node_key, self.destructive)]
@@ -179,7 +183,8 @@ class SimplePathGenerator:
             path.append(PathObject(parent, self.destructive))
             _, parent = cost_map[parent]
             if len(path) > 1000:
-                print("\n\nI have a bad case of diarrhea\n\n")
+                if DEBUG:
+                    print("\n\nI have a bad case of diarrhea\n\n")
                 break
         return PathMaster(path[:-1], success=success)
 
@@ -287,19 +292,20 @@ class SimplePathGenerator:
 
         else:
             client.path = self.back_track(current_best.item, cost_map, success=False)
-        print("Path generated, size {}".format(len(client.path.path or []) - 1), "\n", time() - time_start, "path time", counter_discovered)
+        if DEBUG:
+            print("Path generated, size {}".format(len(client.path.path or []) - 1), "\n", time() - time_start,
+                  "path time", counter_discovered)
         yield False
 
 
 class NearestTargetPathGenerator(SimplePathGenerator):
     BEST_COMPARATOR = RandomOf
-    DESTRUCTION_ENABLED = False
 
-    def __init__(self, start, end, client, search_limit=100, time_factor=0.005, enable_visual=False, destructive=True):
+    def __init__(self, start, end, client, search_limit=100, time_factor=0.005, enable_visual=False, destructive=False):
         super().__init__(start, end, client, search_limit, time_factor, enable_visual, destructive)
         start_x, start_y, start_z = self.start
         new_x, new_y, new_z = [randint(-search_limit * 3, search_limit * 3) for _ in range(3)]
-        self.random_target = start_x - new_x,start_y - new_y,start_z - new_z
+        self.random_target = start_x - new_x, start_y - new_y, start_z - new_z
 
     def heur(self, new_x, new_y, new_z):
         end = self.end
@@ -311,7 +317,7 @@ class NearestTargetPathGenerator(SimplePathGenerator):
 
         trace, caster = voxel.trace
         if caster and not issubclass(caster, end):
-            trace = 60
+            trace = 120
 
         target_x, target_y, target_z = self.random_target
-        return (abs(target_x - new_x) + abs(target_y - new_y) + abs(target_z - new_z)) / 2 + trace
+        return (abs(target_x - new_x) + abs(target_y - new_y) + abs(target_z - new_z)) / 100 + trace / 10
