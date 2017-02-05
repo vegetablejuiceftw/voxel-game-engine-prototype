@@ -58,8 +58,8 @@ class AnimusAlpha:
             if self.pathing:
                 next(self.pathing)
 
-    def walk_and_expend(self):
-        self.energy = max(self.energy - 3, 0)
+    def walk_expend(self):
+        self.energy = max(self.energy - 0.3, 0)
 
     def suffer_damage(self, damage, cause):
         self.health = max(self.health - damage, 0)

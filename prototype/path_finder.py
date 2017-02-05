@@ -12,14 +12,14 @@ scene = logic.getCurrentScene()
 
 # TODO: different moves for different creatures
 POSSIBLE_MOVES_DICT = {
-    (-1, -1, 0): ((0, -1, 0), (-1, 0, 0), (-1, -1, 0)),
+    # (-1, -1, 0): ((0, -1, 0), (-1, 0, 0), (-1, -1, 0)),
     (-1, 0, 0): ((-1, 0, 0),),
-    (-1, 1, 0): ((0, 1, 0), (-1, 0, 0), (-1, 1, 0)),
+    # (-1, 1, 0): ((0, 1, 0), (-1, 0, 0), (-1, 1, 0)),
     (0, -1, 0): ((0, -1, 0),),
     (0, 1, 0): ((0, 1, 0),),
-    (1, -1, 0): ((0, -1, 0), (1, 0, 0), (1, -1, 0)),
+    # (1, -1, 0): ((0, -1, 0), (1, 0, 0), (1, -1, 0)),
     (1, 0, 0): ((1, 0, 0),),
-    (1, 1, 0): ((0, 1, 0), (1, 0, 0), (1, 1, 0)),
+    # (1, 1, 0): ((0, 1, 0), (1, 0, 0), (1, 1, 0)),
 
     (-1, 0, -1): ((-1, 0, 0), (-1, 0, -1),),
     (0, -1, -1): ((0, -1, 0), (0, -1, -1),),
@@ -31,7 +31,7 @@ POSSIBLE_MOVES_DICT = {
     (1, 0, 1): ((0, 0, 1), (1, 0, 1),)
 }
 
-POSSIBLE_MOVES = list(POSSIBLE_MOVES_DICT.keys())
+POSSIBLE_MOVES = tuple(POSSIBLE_MOVES_DICT.keys())
 
 
 def is_air(voxel):
@@ -49,14 +49,10 @@ def is_npc(voxel):
 class PathMaster:
     def __init__(self, path, success=True):
         self.path = path
-        self._success = success
+        self.success = success
 
     def valid(self):
         return bool(self.path)
-
-    @property
-    def success(self):
-        return self._success
 
 
 class PathObject(object):
@@ -64,63 +60,47 @@ class PathObject(object):
     PATH_WAIT = 1
     PATH_FAIL = 2
 
-    def __init__(self, pos):
-        super(PathObject, self).__init__()
+    def __init__(self, pos, destructible):
         self.pos = pos
         self.work = None
+        self.destructible = destructible
+
+    def __str__(self):
+        return str(self.pos)
 
     def assign(self, worker):
         self.work = self.complete(worker)
 
     def tick(self):
-        state = next(self.work)
-        return state
+        return next(self.work)
 
     def complete(self, worker):
         yield PathObject.PATH_WAIT
-        while True:
-            if worker.energy > 0.01:
-                valid_move = worker.relative_move(Vector(self.pos))
-                if valid_move:
-                    worker.walk_and_expend()
-                    yield PathObject.PATH_SUCCESS
-                    break
-                else:
-                    yield PathObject.PATH_FAIL
-            yield PathObject.PATH_WAIT
-
-
-class DestructivePathObject(PathObject):
-    def __str__(self):
-        return str(self.pos)
-
-    def complete(self, worker):
-        yield PathObject.PATH_WAIT
-
         while True:
             if worker.energy > 0.3:
-                delta = floored_tuple(Vector(self.pos) - Vector(worker.pos))
-                if not delta in POSSIBLE_MOVES_DICT:
-                    yield PathObject.PATH_FAIL
+                if self.destructible:
+                    delta = floored_tuple(Vector(self.pos) - Vector(worker.pos))
+                    if not delta in POSSIBLE_MOVES_DICT:
+                        yield PathObject.PATH_FAIL
 
-                for dv in POSSIBLE_MOVES_DICT[delta]:
-                    check_pos = Vector(worker.pos) + Vector(dv)
-                    chunk, voxel = logic.chunks.raycast(check_pos)
-                    if is_solid(voxel):
-                        logic.work.append(RemoveWork(check_pos, 0))
-                        for i in range(20):
-                            if voxel.val != 0:
-                                yield PathObject.PATH_WAIT
-                            else:
-                                break
+                    for dv in POSSIBLE_MOVES_DICT[delta]:
+                        check_pos = Vector(worker.pos) + Vector(dv)
+                        chunk, voxel = logic.chunks.raycast(check_pos)
+                        if is_solid(voxel):
+                            logic.work.append(RemoveWork(check_pos, 0))
+                            for i in range(20):
+                                if voxel.val != 0:
+                                    yield PathObject.PATH_WAIT
+                                else:
+                                    break
 
                 valid_move = worker.relative_move(Vector(self.pos))
                 if valid_move:
-                    worker.energy -= 0.3
+                    worker.walk_expend()
                     yield PathObject.PATH_SUCCESS
                     break
                 else:
-                    print("BROKE")
+                    print("PathObject: path has changed")
                     yield PathObject.PATH_FAIL
             yield PathObject.PATH_WAIT
 
@@ -192,11 +172,11 @@ class SimplePathGenerator:
             print('no node_key')
             return PathMaster(None)
 
-        path = [DestructivePathObject(node_key)]
+        path = [PathObject(node_key, self.destructive)]
         _, parent = cost_map[node_key]
         while parent is not None:
             self.visual(parent, (0, 0, 0, 0.3), 80)
-            path.append(DestructivePathObject(parent))
+            path.append(PathObject(parent, self.destructive))
             _, parent = cost_map[parent]
             if len(path) > 1000:
                 print("\n\nI have a bad case of diarrhea\n\n")
