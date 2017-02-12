@@ -302,3 +302,7 @@ def mark(cont):
     if voxel:
         logic.marker = Vector(hit_pos) + normal
         print('marker', logic.marker, chunk.pos)
+
+        if not getattr(logic, "marker_object", None):
+            logic.marker_object = scene.addObject("Marker", "World_manager")
+        logic.marker_object.worldPosition = logic.marker

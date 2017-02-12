@@ -152,7 +152,7 @@ class RandomOf(BestOf):
 class SimplePathGenerator:
     BEST_COMPARATOR = BestOf
 
-    def __init__(self, start, end, client, search_limit=100, time_factor=0.005, enable_visual=False, destructive=True):
+    def __init__(self, start, end, client, search_limit=100, time_factor=0.005, enable_visual=True, destructive=True):
         self.start = tuple(start)
         self.end = tuple(end) if not isinstance(end, type) else end
         self.client = client

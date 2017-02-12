@@ -16,7 +16,7 @@ logic.npc = []
 logic.PathManager = PathManager()
 logic.NPC_TICK_COUNTER = 0
 logic.NPC_CURRENT_INDEX = 0
-logic.marker = 0, 0, 0
+logic.marker = None
 logic.epoch = 1
 
 
@@ -211,9 +211,10 @@ class NPC(AnimusAlpha):
         while True:
             if not waiting:
                 path_generator = self.path_generator_factory()
-                logic.PathManager.append(path_generator)
-                waiting = True
-                self.path = None
+                if path_generator:
+                    logic.PathManager.append(path_generator)
+                    waiting = True
+                    self.path = None
             # path has arrived
             elif self.path is not None:
                 # path is bad
@@ -239,6 +240,7 @@ class NPC(AnimusAlpha):
             self.hunger = 50
             child = scene.addObject(self.obj.name, "World_manager")
             child.worldPosition = self.pos + Vector((0, 0, 1))
+
 
 class Sheep(NPC):
     def __init__(self, arg):
@@ -322,8 +324,9 @@ class Human(NPC):
         next(self.task)
 
     def path_generator_factory(self):
-        start = floored_tuple(self.pos)
-        return self.path_generator(start, logic.marker, self, search_limit=4000)
+        if logic.marker:
+            start = floored_tuple(self.pos)
+            return self.path_generator(start, logic.marker, self, search_limit=4000)
 
 
 class Wolf(NPC):
