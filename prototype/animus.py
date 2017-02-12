@@ -12,7 +12,10 @@ class AnimusAlpha:
         self.state = self.state.tick()
 
     def is_hungry(self):
-        return self.hunger > 50
+        return self.hunger > 15
+
+    def is_starving(self):
+        return self.hunger > 60
 
     def is_tired(self):
         return self.energy < 20
@@ -45,7 +48,7 @@ class AnimusAlpha:
             self.hunger = 0
 
     def can_breed(self):
-        return self.maturity >= 100 and not self.is_hungry() and not self.in_danger()
+        return self.maturity >= 100 and not self.is_hungry()
 
     def breed(self):
         raise NotImplementedError
@@ -55,13 +58,11 @@ class AnimusAlpha:
 
     def regenerate(self):
         if not self.is_hungry():
-            self.maturity = min(self.maturity + 0.08, 100)
+            self.maturity = min(self.maturity + 0.06, 100)
 
-        if self.hunger == 100:
+        if self.is_starving():
             self.energy = min(self.energy + 2, 100)
-            self.health = min(self.health - 1, 0)
-        else:
-            self.health = min(self.health + 1, 100)
+            self.health = min(self.health - 2 * self.hunger, 0)
 
         if not self.is_hungry() and (self.is_tired() or not self.is_healthy()):
             self.energy = min(self.energy + 2, 100)
@@ -69,7 +70,7 @@ class AnimusAlpha:
             # digest food
             self.hunger = min(self.hunger + 2, 100)
         else:
-            self.hunger = min(self.hunger + 0.1, 100)
+            self.hunger = min(self.hunger + 0.05, 100)
 
     def explore(self):
         if self.motivated() and self.pathing:
@@ -102,7 +103,7 @@ class StateNode:
         for name, vector in self.transitions.items():
             result = vector(self)
             if result:
-                print('\n', name, '->', result.__class__.__name__)
+                print(name, '->', result.__class__.__name__)
                 return result
         return self
 

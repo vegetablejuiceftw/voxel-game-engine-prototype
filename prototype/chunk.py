@@ -29,8 +29,6 @@ DARK_BROWN = (0.3, 0.1, 0.0, 1)
 
 COLORS = [None, GREEN, BROWN, GRAY, DARK_BROWN, DARK_GREEN]
 
-DEBUG = False
-
 
 def tuple_to_index(local_position):
     x, y, z = local_position
@@ -61,13 +59,13 @@ class Voxel:
         self._NPC = npc
         if npc:
             self._last = npc.__class__
-        self._trace = logic.epoch()
+        self._trace = logic.epoch
 
     @property
     def trace(self):
         if not self._last:
             return 100, None
-        trace = min(logic.epoch() - self._trace, 100)
+        trace = min(logic.epoch - self._trace, 100)
         if trace == 100:
             self._last = None
         return trace, self._last
@@ -191,10 +189,6 @@ class ChunkManager:
             self._map[key] = chunk
             chunk.generate_faces()
             chunk.obj = self.obj_builder(chunk.face_count, key)
-            if DEBUG:
-                ChunkManager.FACE_COUNTS.update([round(chunk.face_count / 50) * 50])
-                print("Common rounded face counts~~", ChunkManager.FACE_COUNTS.most_common(5))
-
             self.draw_builder(chunk, chunk.faces)
         return chunk
 

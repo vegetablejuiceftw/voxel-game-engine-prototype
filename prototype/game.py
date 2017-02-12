@@ -288,7 +288,7 @@ def build(cont):
             logic.work.append(RemoveWork(Vector(hit_pos) + normal, 4))
         elif own.get('select') == 3:
             free_pos = Vector(hit_pos) + normal
-            obj = scene.addObject('Sheep', own)
+            obj = scene.addObject('Sheep', "World_manager")
             obj.worldPosition = free_pos
 
 

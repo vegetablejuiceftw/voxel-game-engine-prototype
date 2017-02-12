@@ -1,7 +1,7 @@
-from bge import logic, render
+from bge import logic
 from mathutils import Vector
 from time import time
-from random import random, choice
+from random import random, choice, shuffle
 
 from path_finder import (
     POSSIBLE_MOVES_DICT, is_air, is_solid, is_npc, PathObject, POSSIBLE_MOVES, POSSIBLE_MOVES_VECTORS, PathManager,
@@ -16,9 +16,8 @@ logic.npc = []
 logic.PathManager = PathManager()
 logic.NPC_TICK_COUNTER = 0
 logic.NPC_CURRENT_INDEX = 0
-logic.NPC_TIME_CONSTANT = 0.002
 logic.marker = 0, 0, 0
-logic.epoch = lambda: time() // logic.NPC_TIME_CONSTANT
+logic.epoch = 1
 
 
 class NPC(AnimusAlpha):
@@ -58,9 +57,16 @@ class NPC(AnimusAlpha):
 
     @staticmethod
     def room_index(pos):
-        return tuple(i // NPC.ROOM_SIZE * NPC.ROOM_SIZE for i in pos)
+        return (
+            pos[0] // NPC.ROOM_SIZE * NPC.ROOM_SIZE,
+            pos[1] // NPC.ROOM_SIZE * NPC.ROOM_SIZE,
+            pos[2] // NPC.ROOM_SIZE * NPC.ROOM_SIZE
+        )
 
     def change_room(self, old):
+        if not old:
+            NPC.POSITIONS.get(self.room_index(self.pos), set()).discard(self)
+            return
         key = self.room_index(old)
         room = NPC.POSITIONS.get(key)
         if room:
@@ -76,7 +82,7 @@ class NPC(AnimusAlpha):
         return (self.pos - other.pos).length
 
     def near(self, type_class, quick=False):
-        key = self.room_index(self.pos)
+        x, y, z = self.room_index(self.pos)
         deltas = [(0, 0, 0), (-NPC.ROOM_SIZE, 0, 0), (0, -NPC.ROOM_SIZE, 0), (0, 0, -NPC.ROOM_SIZE),
                   (0, 0, NPC.ROOM_SIZE), (0, NPC.ROOM_SIZE, 0), (NPC.ROOM_SIZE, 0, 0),
                   (-NPC.ROOM_SIZE, -NPC.ROOM_SIZE, 0), (-NPC.ROOM_SIZE, 0, -NPC.ROOM_SIZE),
@@ -90,19 +96,23 @@ class NPC(AnimusAlpha):
                   (NPC.ROOM_SIZE, -NPC.ROOM_SIZE, -NPC.ROOM_SIZE), (NPC.ROOM_SIZE, -NPC.ROOM_SIZE, NPC.ROOM_SIZE),
                   (NPC.ROOM_SIZE, NPC.ROOM_SIZE, -NPC.ROOM_SIZE), (NPC.ROOM_SIZE, NPC.ROOM_SIZE, NPC.ROOM_SIZE)]
         radar = []
-        count = 0
+        shuffle(deltas)
 
-        for dV in deltas:
-            check_key = key[0] + dV[0], key[1] + dV[1], key[2] + dV[2]
+        for dx, dy, dz in deltas:
+            check_key = x + dx, y + dy, z + dz
             neighbours = NPC.POSITIONS.get(check_key, [])
-            for other in neighbours:
-                count += 1
-                if other != self and (not type_class or isinstance(other, type_class)):
-                    dist = self.dist(other)
-                    if quick:
-                        return other
-                    radar.append((dist, other))
-        return sorted(radar, key=lambda x: x[0])
+            if quick and neighbours:
+                c = choice(tuple(neighbours))
+                if not c.alive:  # TODO: checkout is broken
+                    print("DERPSA SAASAS ASAS")
+                    neighbours.remove(c)
+                    return None
+                return c if c != self else None
+            elif not quick:
+                for other in neighbours:
+                    if other != self and (not type_class or isinstance(other, type_class)):
+                        radar.append((self.dist(other), other))
+        return sorted(radar, key=lambda k: k[0])
 
     @property
     def pos(self):
@@ -115,52 +125,51 @@ class NPC(AnimusAlpha):
         return self._pos
 
     def register(self, voxel):
-        self.old_trace = self.last_voxel.trace
         if self.last_voxel:
             self.last_voxel.NPC = None
         if voxel:
+            self.old_trace = voxel.trace
             self.last_voxel = voxel
             voxel.NPC = self
 
-    def move(self, vector):
-        if self.visual:
-            if vector.length != 0:
-                self.visual.alignAxisToVect(vector, 1)
-            else:
-                self.visual.alignAxisToVect((0, 1, 0), 1)
-            self.visual.alignAxisToVect((0, 0, 1), 2)
-
+    def check_move(self, vector):
         x, y, z = self.pos
-        ground = logic.chunks.quick_voxel((x, y, z - 1))
-        if not is_solid(ground):
-            return False
-
         air_space = POSSIBLE_MOVES_DICT.get(floored_tuple(vector))
-
         if air_space is None:
             return False
 
-        for deltaAirVector in air_space:
-            new_air_pos = (
-                x + deltaAirVector[0],
-                y + deltaAirVector[1],
-                z + deltaAirVector[2]
-            )
-            if not is_air(logic.chunks.quick_voxel(new_air_pos)):
-                break
-        else:
+        ground = logic.chunks.quick_voxel((x, y, z - 1))
+        if is_air(ground):
+            return False
+
+        for dx, dy, dz in air_space:
+            if not is_air(logic.chunks.quick_voxel((x + dx, y + dy, z + dz))):
+                return False
+        return True
+
+    def move(self, vector):
+        if self.check_move(vector):
             target_pos = self.pos + vector
             ground = logic.chunks.quick_voxel((target_pos[0], target_pos[1], target_pos[2] - 1))
-            if is_solid(ground) or self.stupid:
+            if is_solid(ground) or self.stupid and not vector.z:
                 target = logic.chunks.quick_voxel(target_pos)
                 old = Vector(self._pos)
                 self.pos += vector
                 self.register(target)
                 self.change_room(old)
+
+                if self.visual:
+                    if vector and vector.length != 0:
+                        self.visual.alignAxisToVect(vector, 1)
+                    else:
+                        self.visual.alignAxisToVect((0, 1, 0), 1)
+                    self.visual.alignAxisToVect((0, 0, 1), 2)
+
                 return True
         return False
 
     def tick(self):
+        self.info.visible = logic.debug != 0
         self._pos = self.obj.worldPosition.copy()
         if self.health <= 0:
             print("dieded")
@@ -185,7 +194,9 @@ class NPC(AnimusAlpha):
     def die(self):
         self.alive = False
         self.register(None)
-        self.obj.endObject()
+        self.change_room(None)
+        if not self.obj.invalid:
+            self.obj.endObject()
 
     def path_generator_factory(self):
         start = floored_tuple(self.pos)
@@ -222,13 +233,12 @@ class NPC(AnimusAlpha):
             yield
 
     def breed(self):
-        up = logic.chunks.quick_voxel(self.pos + Vector((0,0,1)))
+        up = logic.chunks.quick_voxel(self.pos + Vector((0, 0, 1)))
         if is_air(up):
             self.maturity = 0
             self.hunger = 50
-            child = scene.addObject(self.obj.name, self.obj)
-            child.worldPosition = self.pos + Vector((0,0,1))
-
+            child = scene.addObject(self.obj.name, "World_manager")
+            child.worldPosition = self.pos + Vector((0, 0, 1))
 
 class Sheep(NPC):
     def __init__(self, arg):
@@ -237,14 +247,16 @@ class Sheep(NPC):
         self.name = str(NPC.COUNT) + 'SHEEP'
         self.last_move_timeout = 0
         self.last_move = Vector((0, 0, 0))
-        self.last_bump = logic.epoch()
+        self.last_bump = logic.epoch
+        self.last_plan = []
+
+    def can_breed(self):
+        return self.maturity >= 100
 
     def tick(self):
         super(Sheep, self).tick()
 
-        self.stupid = False
-        if random() > 0.97:
-            self.stupid = not self.stupid
+        self.stupid = random() > 0.97
 
         if self.energy > 1:
             self.brownian_motion()
@@ -254,18 +266,18 @@ class Sheep(NPC):
         elif random() > 0.97:
             self.info.text = '%.2f' % self.maturity
 
-        if logic.epoch() - self.last_bump:
-            self.maturity = min(self.maturity + (self.old_trace[0] > 40) * 0.5, 100)
+        trace = self.old_trace[0]
 
-    @staticmethod
-    def closest_move(direction):
-        largest_number, random_vec = 0, None
-        while not largest_number:
-            for i in range(len(POSSIBLE_MOVES_VECTORS)):
-                temp_random_vec = choice(POSSIBLE_MOVES_VECTORS)
-                angle = direction.angle(temp_random_vec, 0)
-                if angle > largest_number:
-                    largest_number, random_vec = angle, temp_random_vec
+        if logic.epoch - self.last_bump > 7 and trace > 93:
+            self.maturity = min(self.maturity + trace * 0.006, 100)
+
+    def closest_move(self, direction):
+        largest_number, random_vec, vecs = 0, None, list(POSSIBLE_MOVES_VECTORS)
+        shuffle(vecs)
+        for temp_random_vec in vecs:
+            angle = direction.angle(temp_random_vec, 0)
+            if angle > largest_number - random() * 1 and self.check_move(temp_random_vec):
+                largest_number, random_vec = angle, temp_random_vec
         return random_vec
 
     def brownian_motion(self):
@@ -279,18 +291,22 @@ class Sheep(NPC):
 
         too_close_npc = self.near(None, quick=True)
         if too_close_npc:
-            pos = self.pos
-            direction = too_close_npc.pos - pos
+            direction = too_close_npc.pos - self.pos
             random_vec = self.closest_move(direction)
-            render.drawLine(pos, pos + random_vec * 5, (1, 0.1, 0.5))
-            self.last_bump = logic.epoch()
+            if not random_vec:
+                return
+            self.last_bump = logic.epoch
+            self.last_plan = random_vec
         else:
-            random_vec = choice(POSSIBLE_MOVES_VECTORS)
+            for i in range(5):
+                random_vec = choice(POSSIBLE_MOVES_VECTORS)
+                if self.check_move(random_vec):
+                    break
 
-        if self.move(random_vec):
+        if random_vec and self.move(random_vec):
             self.walk_expend()
             self.last_move = random_vec
-            self.last_move_timeout = 5
+            self.last_move_timeout = 3
 
 
 class Human(NPC):
@@ -315,6 +331,7 @@ class Wolf(NPC):
         super(Wolf, self).__init__(arg)
         self.task = self.travel()
         self.energy = 100
+        self.hunger = 25
 
     def tick(self):
         super(Wolf, self).tick()
@@ -322,8 +339,8 @@ class Wolf(NPC):
         self.info.text = self.status()
 
     def get_food(self):
-        for dv in POSSIBLE_MOVES:
-            check_pos = self.pos + Vector(dv)
+        for dv in POSSIBLE_MOVES_VECTORS:
+            check_pos = self.pos + dv
             check_voxel = logic.chunks.quick_voxel(check_pos)
             if is_npc(check_voxel):
                 prey = check_voxel.NPC
@@ -332,7 +349,7 @@ class Wolf(NPC):
 
     def path_generator_factory(self):
         start = floored_tuple(self.pos)
-        return NearestTargetPathGenerator(start, Sheep, self, search_limit=50 + int(self.hunger) * 7)
+        return NearestTargetPathGenerator(start, Sheep, self, search_limit=70 + int(self.hunger))
 
 
 def init_human(cont):
@@ -354,24 +371,30 @@ def iterate_pathing_generator():
 def iterate_npc(cont):
     npc_count = len(logic.npc)
     cont.owner['NPC_COUNT'] = npc_count
+
     if not npc_count:
         return
 
     start_time = time()
-    epoch = logic.epoch()
-
+    epoch = logic.epoch
     if logic.NPC_TICK_COUNTER != epoch:
-        if npc_count > logic.NPC_CURRENT_INDEX:
-            while time() - start_time < 0.004 and npc_count > logic.NPC_CURRENT_INDEX:
-                npc = logic.npc[logic.NPC_CURRENT_INDEX]
-                if not npc.alive:
-                    logic.npc.remove(npc)
-                    del npc
-                    npc_count = len(logic.npc)
-                    continue
-                npc.tick()
-                logic.NPC_CURRENT_INDEX += 1
-
-        else:
-            logic.NPC_CURRENT_INDEX = 0
-            logic.NPC_TICK_COUNTER = epoch
+        if not logic.PathManager.tasks:
+            if npc_count > logic.NPC_CURRENT_INDEX:
+                while time() - start_time < 0.004 and npc_count > logic.NPC_CURRENT_INDEX:
+                    npc = logic.npc[logic.NPC_CURRENT_INDEX]
+                    if not npc.alive:
+                        npc.die()
+                        logic.npc.remove(npc)
+                        npc_count = len(logic.npc)
+                        continue
+                    npc.tick()
+                    logic.NPC_CURRENT_INDEX += 1
+            else:
+                logic.NPC_CURRENT_INDEX = 0
+                logic.NPC_TICK_COUNTER = epoch
+                logic.epoch += 1
+                cont.owner['SHEEP_COUNT'] = 0
+                cont.owner['WOLF_COUNT'] = 0
+                for npc in logic.npc:
+                    cont.owner['SHEEP_COUNT'] += type(npc) == Sheep
+                    cont.owner['WOLF_COUNT'] += type(npc) == Wolf

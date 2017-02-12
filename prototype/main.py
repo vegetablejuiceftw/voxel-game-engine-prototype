@@ -4,18 +4,25 @@ from npc import iterate_npc, iterate_pathing_generator
 from bge import logic, events
 
 init_game()
+logic.running = True
+logic.debug = 0
+counter = 0
 
-running = True
 def tick_game(cont):
-    global running
+    global counter
+
+    cont.owner['RUNNING'] = logic.running
+    cont.owner['DEBUG_MODE'] = logic.debug
 
     keyboard = logic.keyboard
-    JUST_ACTIVATED = logic.KX_INPUT_JUST_ACTIVATED
+    if keyboard.events[events.PADMINUS] == logic.KX_INPUT_JUST_ACTIVATED:
+        logic.running = not logic.running
+    if keyboard.events[events.PADPLUSKEY] == logic.KX_INPUT_JUST_ACTIVATED:
+        logic.debug = (logic.debug + 1) % 3
 
-    if keyboard.events[events.PADMINUS] == JUST_ACTIVATED:
-        running = not running
-
-    if running:
+    if logic.running:
         do_work()
-        iterate_npc(cont)
+        if not counter % 1:
+            iterate_npc(cont)
+        counter += 1
         iterate_pathing_generator()

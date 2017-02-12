@@ -10,7 +10,8 @@ from chunk import floored_tuple
 
 scene = logic.getCurrentScene()
 
-DEBUG = False
+DEBUG_NORMAL = lambda: logic.debug != 0
+DEBUG_HEAVY = lambda: logic.debug > 1
 
 # TODO: different moves for different creatures
 POSSIBLE_MOVES_DICT = {
@@ -32,6 +33,7 @@ POSSIBLE_MOVES_DICT = {
     (0, 1, 1): ((0, 0, 1), (0, 1, 1),),
     (1, 0, 1): ((0, 0, 1), (1, 0, 1),)
 }
+
 
 POSSIBLE_MOVES = tuple(POSSIBLE_MOVES_DICT.keys())
 POSSIBLE_MOVES_VECTORS = tuple(map(Vector, POSSIBLE_MOVES))
@@ -103,7 +105,7 @@ class PathObject:
                     yield PathObject.PATH_SUCCESS
                     break
                 else:
-                    if DEBUG:
+                    if DEBUG_NORMAL():
                         print("PathObject: path has changed")
                     yield PathObject.PATH_FAIL
             yield PathObject.PATH_WAIT
@@ -172,18 +174,19 @@ class SimplePathGenerator:
 
     def back_track(self, node_key, cost_map, success=True):
         if not node_key:
-            if DEBUG:
+            if DEBUG_NORMAL():
                 print('no node_key')
             return PathMaster(None)
 
         path = [PathObject(node_key, self.destructive)]
         _, parent = cost_map[node_key]
         while parent is not None:
-            self.visual(parent, (0, 0, 0, 0.3), 80)
+            if DEBUG_NORMAL():
+                self.visual(parent, (0, 0, 0, 0.3), 80)
             path.append(PathObject(parent, self.destructive))
             _, parent = cost_map[parent]
             if len(path) > 1000:
-                if DEBUG:
+                if DEBUG_NORMAL():
                     print("\n\nI have a bad case of diarrhea\n\n")
                 break
         return PathMaster(path[:-1], success=success)
@@ -209,6 +212,7 @@ class SimplePathGenerator:
 
         counter_discovered = 0
         tick_start = time()
+        debug = DEBUG_HEAVY()
         while (walk_queue or dig_queue) and counter_discovered < self.search_limit:
             # resting interval
             if time() - tick_start > self.time_factor:
@@ -242,7 +246,7 @@ class SimplePathGenerator:
             current_best.check(current_heur ** 2 / current_cost, parent)
 
             # search flood visual
-            if self.enable_visual:
+            if self.enable_visual and debug:
                 self.visual(node_key, (0.1, 1, 0.1, 0.6), 25)
 
             counter_discovered += 1
@@ -292,7 +296,7 @@ class SimplePathGenerator:
 
         else:
             client.path = self.back_track(current_best.item, cost_map, success=False)
-        if DEBUG:
+        if DEBUG_NORMAL():
             print("Path generated, size {}".format(len(client.path.path or []) - 1), "\n", time() - time_start,
                   "path time", counter_discovered)
         yield False
@@ -301,7 +305,7 @@ class SimplePathGenerator:
 class NearestTargetPathGenerator(SimplePathGenerator):
     BEST_COMPARATOR = RandomOf
 
-    def __init__(self, start, end, client, search_limit=100, time_factor=0.005, enable_visual=False, destructive=False):
+    def __init__(self, start, end, client, search_limit=100, time_factor=0.005, enable_visual=True, destructive=False):
         super().__init__(start, end, client, search_limit, time_factor, enable_visual, destructive)
         start_x, start_y, start_z = self.start
         new_x, new_y, new_z = [randint(-search_limit * 3, search_limit * 3) for _ in range(3)]
@@ -320,4 +324,4 @@ class NearestTargetPathGenerator(SimplePathGenerator):
             trace = 120
 
         target_x, target_y, target_z = self.random_target
-        return (abs(target_x - new_x) + abs(target_y - new_y) + abs(target_z - new_z)) / 100 + trace / 10
+        return (abs(target_x - new_x) + abs(target_y - new_y) + abs(target_z - new_z)) / 4 + trace / 7
