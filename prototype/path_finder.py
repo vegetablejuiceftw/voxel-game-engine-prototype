@@ -44,7 +44,7 @@ def is_air(voxel):
 
 
 def is_solid(voxel):
-    return bool(voxel and voxel.val != 0)
+    return voxel and voxel.val != 0
 
 
 def is_npc(voxel):
@@ -107,6 +107,22 @@ class PathObject:
                 else:
                     if DEBUG_NORMAL():
                         print("PathObject: path has changed")
+                    voxel = logic.chunks.quick_voxel(self.pos)
+                    if is_npc(voxel):
+                        for i in range(20):
+                            if is_npc(voxel):
+                                yield PathObject.PATH_WAIT
+                            else:
+                                if DEBUG_NORMAL():
+                                    print("PathObject: path recovered")
+                                for i in range(4):
+                                    yield PathObject.PATH_WAIT
+                                break
+                        else:
+                            if DEBUG_NORMAL():
+                                print("PathObject: path timed out")
+                            yield PathObject.PATH_FAIL
+                        continue
                     yield PathObject.PATH_FAIL
             yield PathObject.PATH_WAIT
 
@@ -114,23 +130,20 @@ class PathObject:
 class PathManager:
     def __init__(self):
         self.tasks = deque([])
-        self.work = self.solve_paths()
+        self.task = None
 
     def append(self, path_generator):
         self.tasks.append(path_generator)
 
-    def solve_paths(self):
-        while True:
-            if not self.tasks:
-                yield True
-                continue
-            path_to_be_worked = self.tasks.popleft()
-            path_generator = path_to_be_worked.solve()
-            while next(path_generator):
-                yield False
-
     def tick(self):
-        next(self.work)
+        if not self.task:
+            if not self.tasks:
+                return
+            path_to_be_worked = self.tasks.popleft()
+            self.task = path_to_be_worked.solve()
+
+        if not next(self.task):
+            self.task = None
 
 
 class BestOf(object):
@@ -197,6 +210,7 @@ class SimplePathGenerator:
 
     def solve(self):
         time_start = time()
+        tick_start = time()
 
         current_best = self.BEST_COMPARATOR()
         heuristic = self.heur
@@ -211,8 +225,8 @@ class SimplePathGenerator:
         blasted_dict = {None: set()}
 
         counter_discovered = 0
-        tick_start = time()
         debug = DEBUG_HEAVY()
+
         while (walk_queue or dig_queue) and counter_discovered < self.search_limit:
             # resting interval
             if time() - tick_start > self.time_factor:
@@ -220,8 +234,7 @@ class SimplePathGenerator:
                 tick_start = time()
 
             queue = dig_queue if not counter_discovered % 4 and dig_queue else (walk_queue or dig_queue)
-            current_score, current_cost, current_destruction, current_heur, node_key, parent, to_be_removed = heappop(
-                queue)
+            current_score, current_cost, current_destruction, current_heur, node_key, parent, to_be_removed = heappop(queue)
 
             # search end criteria
             if not current_heur:
@@ -269,25 +282,31 @@ class SimplePathGenerator:
 
                 rem_list = set()
                 D = current_destruction
+                N = 0
 
                 for delta_air_x, delta_air_y, delta_air_z in airspace:
                     new_air_pos = (
                         node_x + delta_air_x,
                         node_y + delta_air_y,
-                        node_z + delta_air_z
+                        node_z + delta_air_z,
                     )
                     current_voxel = chunks_manager.quick_voxel(new_air_pos)
-                    if not destructive:
-                        if not is_air(current_voxel):
-                            break
-                        continue
+                    if is_npc(current_voxel):
+                        N += 5
 
+                    if not destructive:
+                        # not air?
+                        if is_solid(current_voxel):
+                            break
                     elif is_solid(current_voxel) and new_air_pos not in current_blasted:
                         rem_list.add(new_air_pos)
                         D += 2
                 else:
                     H = heuristic(new_x, new_y, new_z)
-                    G = current_cost + 1
+                    if H:
+                        H += N
+
+                    G = current_cost + 1 + N
                     F = G + H + D
 
                     if cost_map.get(new_pos, (999090999090,))[0] > G:

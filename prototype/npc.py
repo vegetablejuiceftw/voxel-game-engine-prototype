@@ -1,10 +1,10 @@
 from bge import logic
 from mathutils import Vector
 from time import time
-from random import random, choice, shuffle
+from random import random, choice, shuffle, randint
 
 from path_finder import (
-    POSSIBLE_MOVES_DICT, is_air, is_solid, is_npc, PathObject, POSSIBLE_MOVES, POSSIBLE_MOVES_VECTORS, PathManager,
+    POSSIBLE_MOVES_DICT, is_air, is_solid, is_npc, PathObject, POSSIBLE_MOVES, POSSIBLE_MOVES_VECTORS,
     NearestTargetPathGenerator,
     SimplePathGenerator
 )
@@ -13,7 +13,6 @@ from chunk import floored_tuple
 
 scene = logic.getCurrentScene()
 logic.npc = []
-logic.PathManager = PathManager()
 logic.NPC_TICK_COUNTER = 0
 logic.NPC_CURRENT_INDEX = 0
 logic.marker = None
@@ -212,7 +211,7 @@ class NPC(AnimusAlpha):
             if not waiting:
                 path_generator = self.path_generator_factory()
                 if path_generator:
-                    logic.PathManager.append(path_generator)
+                    logic.path_manager.append(path_generator)
                     waiting = True
                     self.path = None
             # path has arrived
@@ -240,6 +239,7 @@ class NPC(AnimusAlpha):
             self.hunger = 50
             child = scene.addObject(self.obj.name, "World_manager")
             child.worldPosition = self.pos + Vector((0, 0, 1))
+            logic.npc.append(self.__class__(child))
 
 
 class Sheep(NPC):
@@ -321,12 +321,39 @@ class Human(NPC):
 
     def tick(self):
         super(Human, self).tick()
+        if self.pos == logic.marker:
+            from game import remove_marker
+            remove_marker()
         next(self.task)
 
     def path_generator_factory(self):
         if logic.marker:
+            node_x, node_y, node_z = self.pos
+            broken = False
+            for delta_vector, airspace in POSSIBLE_MOVES_DICT.items():
+                new_x, new_y, new_z = node_x + delta_vector[0], node_y + delta_vector[1], node_z + delta_vector[2]
+                new_ground_pos = new_x, new_y, new_z - 1
+                ground = logic.chunks.quick_voxel(new_ground_pos)
+                if not is_solid(ground):
+                    continue
+                broken = False
+                for delta_air_x, delta_air_y, delta_air_z in airspace:
+                    new_air_pos = (
+                        node_x + delta_air_x,
+                        node_y + delta_air_y,
+                        node_z + delta_air_z,
+                    )
+                    current_voxel = logic.chunks.quick_voxel(new_air_pos)
+                    if is_npc(current_voxel) and current_voxel.NPC != self:
+                        broken = True
+                        break
+                if not broken:
+                    break
+            if broken:
+                return
+
             start = floored_tuple(self.pos)
-            return self.path_generator(start, logic.marker, self, search_limit=4000)
+            return self.path_generator(start, logic.marker, self, search_limit=4000, destructive=randint(0, 1))
 
 
 class Wolf(NPC):
@@ -355,20 +382,16 @@ class Wolf(NPC):
         return NearestTargetPathGenerator(start, Sheep, self, search_limit=70 + int(self.hunger))
 
 
-def init_human(cont):
-    logic.npc.append(Human(cont.owner))
+def init_human(obj):
+    logic.npc.append(Human(obj))
 
 
-def init_wolf(cont):
-    logic.npc.append(Wolf(cont.owner))
+def init_wolf(obj):
+    logic.npc.append(Wolf(obj))
 
 
-def init_sheep(cont):
-    logic.npc.append(Sheep(cont.owner))
-
-
-def iterate_pathing_generator():
-    logic.PathManager.tick()
+def init_sheep(obj):
+    logic.npc.append(Sheep(obj))
 
 
 def iterate_npc(cont):
@@ -381,7 +404,7 @@ def iterate_npc(cont):
     start_time = time()
     epoch = logic.epoch
     if logic.NPC_TICK_COUNTER != epoch:
-        if not logic.PathManager.tasks:
+        if not logic.path_manager.tasks:
             if npc_count > logic.NPC_CURRENT_INDEX:
                 while time() - start_time < 0.004 and npc_count > logic.NPC_CURRENT_INDEX:
                     npc = logic.npc[logic.NPC_CURRENT_INDEX]

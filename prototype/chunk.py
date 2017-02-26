@@ -5,7 +5,7 @@ from bge import logic
 
 from perlin import Noise
 
-MAP_SIZE = 2
+MAP_SIZE = 4
 CHUNK_SEED = "Cupcakes1"
 CHUNK_SIZE = 16
 CHUNK_AREA = CHUNK_SIZE ** 2

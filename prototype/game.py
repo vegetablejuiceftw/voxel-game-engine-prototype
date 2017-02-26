@@ -6,6 +6,7 @@ from mathutils import Vector
 
 from work import ChangeWork, RemoveWork
 from chunk import ChunkManager, MAP_SIZE, CHUNK_SIZE, COLORS, tuple_to_chunk_key, floored_tuple, tuple_to_index
+from npc import init_sheep, init_wolf, init_human
 
 scene = logic.getCurrentScene()
 own = "World_manager"
@@ -138,6 +139,22 @@ def input_events(cont):
     own = cont.owner
     own['radious'] = logic.RADIUS
 
+    if keyboard.events[events.ONEKEY] == JUST_ACTIVATED or keyboard.events[events.PAD1] == JUST_ACTIVATED:
+        for i in range(20):
+            obj = scene.addObject('Sheep', "World_manager")
+            obj.worldPosition = 5, 0, 30
+            init_sheep(obj)
+    if keyboard.events[events.TWOKEY] == JUST_ACTIVATED or keyboard.events[events.PAD2] == JUST_ACTIVATED:
+        obj = scene.addObject('Wolf', "World_manager")
+        obj.worldPosition = 5, 0, 30
+        init_wolf(obj)
+
+    if keyboard.events[events.THREEKEY] == JUST_ACTIVATED or keyboard.events[events.PAD3] == JUST_ACTIVATED:
+        if not scene.objects.get('Human'):
+            obj = scene.addObject('Human', "World_manager")
+            obj.worldPosition = 5, 0, 30
+            init_human(obj)
+
 
 def move(cont):
     own = cont.owner
@@ -232,7 +249,7 @@ def blast_sphere(radius):
 
 
 def get_ray_hit(position, direction):
-    #  chunk TODO
+    # chunk TODO
     if not direction.length:
         return
     pos = Vector(position)
@@ -292,6 +309,11 @@ def build(cont):
             obj.worldPosition = free_pos
 
 
+def remove_marker():
+    logic.marker = None
+    logic.marker_object.endObject()
+
+
 def mark(cont):
     own = cont.owner
     direction = cont.sensors["Over"].rayDirection
@@ -303,6 +325,6 @@ def mark(cont):
         logic.marker = Vector(hit_pos) + normal
         print('marker', logic.marker, chunk.pos)
 
-        if not getattr(logic, "marker_object", None):
+        if not getattr(logic, "marker_object", None) or logic.marker_object.invalid:
             logic.marker_object = scene.addObject("Marker", "World_manager")
         logic.marker_object.worldPosition = logic.marker
