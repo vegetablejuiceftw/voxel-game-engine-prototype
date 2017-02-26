@@ -261,38 +261,36 @@ class Chunk:
 
     def fill_voxels(self):
         X, Y, Z = self.pos
-        for x in range(CHUNK_SIZE):
-            for y in range(CHUNK_SIZE):
-                cX, cY = X + x, Y + y
-                cZ = self.MAP_FUNCTION.get_value(cX, cY)
-                tree = X % 16 == 0 and Y % 16 == 0
-                for z in range(CHUNK_SIZE):
-                    index = self.tuple_to_index((x, y, z))
+        fill_range = range(CHUNK_SIZE)
+        get_value = self.MAP_FUNCTION.get_value
+        voxels = self.voxels
+        tree = X % 16 == 0 and Y % 16 == 0
+        for x in fill_range:
+            for y in fill_range:
+                cZ = get_value(X + x, Y + y)
+                for z in fill_range:
+                    # tuple_to_index
+                    index = tuple_to_index((x, y, z))
                     gZ = Z + z
 
                     if gZ < cZ:  # below surface
-                        self.voxels[index] = 1
+                        voxels[index] = 1
 
                     elif gZ == cZ:  # surface
-                        self.voxels[index] = 2
+                        voxels[index] = 2
 
                     elif tree and cZ < gZ <= cZ + 3 and x == 1 and y == 1:
-                        self.voxels[index] = 4
+                        voxels[index] = 4
 
                     elif tree and cZ + 3 < gZ < cZ + 6 and x < 3 and y < 3:
-                        self.voxels[index] = 5
+                        voxels[index] = 5
 
                     elif gZ <= cZ + 1 and randint(1, 11) == 1:
-                        self.voxels[index] = 3
+                        voxels[index] = 3
 
     @property
     def face_count(self):
         return len(self.faces)
-
-    @staticmethod
-    def tuple_to_index(position):
-        x, y, z = position
-        return x + y * CHUNK_SIZE + z * CHUNK_AREA
 
     @staticmethod
     def index_to_tuple(index):
