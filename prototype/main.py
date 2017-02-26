@@ -25,10 +25,11 @@ def tick_game(cont):
     cont.owner['RUNNING'] = logic.running
     cont.owner['DEBUG_MODE'] = logic.debug
 
-    keyboard = logic.keyboard
-    if keyboard.events[events.PADMINUS] == logic.KX_INPUT_JUST_ACTIVATED:
+    kb_events = logic.keyboard.events
+    activated = logic.KX_INPUT_JUST_ACTIVATED
+    if activated in (kb_events[events.PADMINUS], kb_events[events.F11KEY]):
         logic.running = not logic.running
-    if keyboard.events[events.PADPLUSKEY] == logic.KX_INPUT_JUST_ACTIVATED:
+    if activated in (kb_events[events.PADPLUSKEY], kb_events[events.F12KEY]):
         logic.debug = (logic.debug + 1) % 3
 
     if logic.running:

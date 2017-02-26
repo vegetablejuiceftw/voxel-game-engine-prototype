@@ -6,7 +6,7 @@ from bge import logic
 from perlin import Noise
 
 MAP_SIZE = 4
-CHUNK_SEED = "Cupcakes1"
+CHUNK_SEED = "Cupcake"
 CHUNK_SIZE = 16
 CHUNK_AREA = CHUNK_SIZE ** 2
 CHUNK_VOLUME = CHUNK_SIZE ** 3
@@ -36,11 +36,13 @@ def tuple_to_index(local_position):
 
 
 def tuple_to_chunk_key(global_position):
-    return tuple(floor(i / CHUNK_SIZE) * CHUNK_SIZE for i in global_position)
+    x, y, z = global_position
+    return floor(x / CHUNK_SIZE) * CHUNK_SIZE, floor(y / CHUNK_SIZE) * CHUNK_SIZE, floor(z / CHUNK_SIZE) * CHUNK_SIZE
 
 
 def floored_tuple(position):
-    return tuple(floor(i) for i in position)
+    x, y, z = position
+    return floor(x), floor(y), floor(z)
 
 
 class Voxel:
@@ -269,7 +271,6 @@ class Chunk:
             for y in fill_range:
                 cZ = get_value(X + x, Y + y)
                 for z in fill_range:
-                    # tuple_to_index
                     index = tuple_to_index((x, y, z))
                     gZ = Z + z
 
@@ -291,14 +292,6 @@ class Chunk:
     @property
     def face_count(self):
         return len(self.faces)
-
-    @staticmethod
-    def index_to_tuple(index):
-        z = index // CHUNK_AREA
-        index -= z * CHUNK_AREA
-        y = index // CHUNK_SIZE
-        x = index - y * CHUNK_SIZE
-        return x, y, z
 
     @staticmethod
     def print_plane(plane):
