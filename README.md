@@ -32,9 +32,9 @@ title/image/description
 
 # Meshing
 
-[Imgur](http://i.imgur.com/AaCaYxK.gif?1)
-[Imgur](http://i.imgur.com/doc0IMR.jpg)
-[Imgur](http://i.imgur.com/ccliTPS.jpg)
+![Imgur](http://i.imgur.com/AaCaYxK.gif?1)
+![Imgur](http://i.imgur.com/doc0IMR.jpg)
+![Imgur](http://i.imgur.com/ccliTPS.jpg)
 
 [45, 46 meshing example, stable population gif, pathfining]
 
@@ -45,19 +45,19 @@ In a typical voxel game the voxels do not get modified that often compared to ho
 Which is why the main heavy lifting happens at rendering the voxels.
 As a result, it is quite sensible to optimize the mesh upfront.
 
-[no culling](http://i.imgur.com/nMY4iAk.png)
+![no culling](http://i.imgur.com/nMY4iAk.png)
 No culling method has a voxel to face ratio of 6.
 
 Clearly, in order to improve on the naive method is to simply not to draw the faces that
 are obscured by checking each cubes neighbours before creating a face.
 
-[culling](http://i.imgur.com/T28c2DL.png)
+![culling](http://i.imgur.com/T28c2DL.png)
 For a Perlin noise map this amounts to somewhere from 1 to 2 faces per voxel.
 
 Improvement can be brought by merging adjacent quads together into larger regions.
 While not optimal greedy implementations perform quite well.
 
-[greedy](http://i.imgur.com/DuWI8GD.png)
+![greedy](http://i.imgur.com/DuWI8GD.png)
 Example of greedy meshing on a solid chunk of voxels
 
 The idea was inspired by Karnaugh map method which is used to simplify boolean
@@ -65,11 +65,11 @@ algebra exressions.
 
 Meshing can be improved by allowing faces to overlap and extend over undefined (culled) space as shown in next image.
 
-[extending over culled space](http://i.imgur.com/jYJ1E5f.jpg)
+![extending over culled space](http://i.imgur.com/jYJ1E5f.jpg)
 Given that the material (visual) is the same, there is no z-fighting or other artifact for this approach.
 There is no rule that faces can not intersect.
 
-[Imgur](http://i.imgur.com/S3ISygc.png)
+![Imgur](http://i.imgur.com/S3ISygc.png)
 
 To begin, every chunk with n**3 voxels has 3(n+1) planes where faces are drawn as seen on 8x8x8 chunk above.
 While sharing polygons is a proven viable idea,
@@ -77,7 +77,7 @@ all voxel faces on a plane can be drawn with a single polygon where the polygonâ
 So if at least 1 face exists on a plane there has to be at least one polygon.
 This would hint that polygon-wise this would be the optimal solution for the least amount of polygons possible.
 
-[example of textured planes](http://i.imgur.com/ShpJfuN.jpg)
+![example of textured planes](http://i.imgur.com/ShpJfuN.jpg)
 
 
 # Pathfinding in voxel games different
@@ -91,8 +91,8 @@ This algorithm follows the A* pathfinding pattern. The main change to the algori
 the added functionality for passing through solid voxels where the travel cost is
 calculated with the necessary changes in mind.
 
-[I am human path start](http://i.imgur.com/EwdjEm6.jpg)
-[end](http://i.imgur.com/NTXZWAe.jpg)
+![I am human path start](http://i.imgur.com/EwdjEm6.jpg)
+![end](http://i.imgur.com/NTXZWAe.jpg)
 
 # Extra
 Pseudo-random pathfinding.
@@ -102,15 +102,15 @@ If one can offset the probability of the vectors appearing by some dynamic funct
 will try to reach the direction.
 If the motion to the direction of the target is more probable, it may get there eventually.
 
-[Imgur](http://i.imgur.com/QlyZY81.jpg)
-[Imgur](http://i.imgur.com/Kd5MF0j.jpg)
+![Imgur](http://i.imgur.com/QlyZY81.jpg)
+![Imgur](http://i.imgur.com/Kd5MF0j.jpg)
 Dispersion of sheep from danger and competition
 
 This is great for simulationg large set of npc to convey a sense of activity in the world.
 
 Wolfs
 
-[wolf state](http://i.imgur.com/DocAdX0.png)
-[Imgur](http://i.imgur.com/fgtKyDi.jpg)
-[Imgur](http://i.imgur.com/Yj2vJN4.jpg)
-[Imgur](http://i.imgur.com/JHBiQft.jpg)
+![wolf state](http://i.imgur.com/DocAdX0.png)
+![Imgur](http://i.imgur.com/fgtKyDi.jpg)
+![Imgur](http://i.imgur.com/Yj2vJN4.jpg)
+![Imgur](http://i.imgur.com/JHBiQft.jpg)
