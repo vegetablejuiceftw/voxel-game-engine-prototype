@@ -1,7 +1,7 @@
 # voxel-game-engine-prototype
-<img src="images/edit.gif" width="300" />
-<img src="images/smart_path.gif" width="300" />
-<img src="images/population.gif" width="300" />
+<img src="images/edit.gif" width="292" />
+<img src="images/smart_path.gif" width="292" />
+<img src="images/population.gif" width="292" />
 
 Main controls:
 
