@@ -3,7 +3,7 @@
 <img src="images/smart_path.gif" width="292" />
 <img src="images/population.gif" width="292" />
 
-Main controls:
+# Main controls:
 
     Mouse to look, wasd to fly and shift to fly faster.
 
@@ -23,25 +23,20 @@ Main controls:
 
     In game press tab for controls reminder.
 
-Disclaimer:
-This is my hoby project that got made into my bachelor thesis.
-It has the distinct smell of a student cutting close to the deadline.
-I will also include some more broad explanations on this project here also.
+# Disclaimer:
+This is my hobby project that got made into my bachelor thesis.
+
+It has the _distinct smell_ of a student cutting close to the deadline.
+I will also include some more broad explanations for said thesis here also.
 
 The main features are:
-* voxel rendering through optimized meshing
+* voxel rendering through optimized greedy meshing
 * examination of different npc ai implementations
-* planned destructive pathfinding
-
-Quick summary of features.
-title/image/description
+* voxel aware destructive pathfinding
 
 # Meshing
 
 ![](http://i.imgur.com/doc0IMR.jpg)
-![](http://i.imgur.com/ccliTPS.jpg)
-
-[45, 46 meshing example, stable population gif, pathfining]
 
 The main challenge in using polygons is figuring out how to convert the voxels into
 **minimum amount of polygons efficiently**.
@@ -51,18 +46,21 @@ Which is why the main heavy lifting happens at rendering the voxels.
 As a result, it is quite sensible to optimize the mesh upfront.
 
 ![no culling](http://i.imgur.com/nMY4iAk.png)
+
 No culling method has a voxel to face ratio of 6.
 
 Clearly, in order to improve on the naive method is to simply not to draw the faces that
 are obscured by checking each cubes neighbours before creating a face.
 
 ![culling](http://i.imgur.com/T28c2DL.png)
+
 For a Perlin noise map this amounts to somewhere from 1 to 2 faces per voxel.
 
 Improvement can be brought by merging adjacent quads together into larger regions.
 While not optimal greedy implementations perform quite well.
 
 ![greedy](http://i.imgur.com/DuWI8GD.png)
+
 Example of greedy meshing on a solid chunk of voxels
 
 The idea was inspired by Karnaugh map method which is used to simplify boolean
@@ -71,6 +69,7 @@ algebra exressions.
 Meshing can be improved by allowing faces to overlap and extend over undefined (culled) space as shown in next image.
 
 ![extending over culled space](http://i.imgur.com/jYJ1E5f.jpg)
+
 Given that the material (visual) is the same, there is no z-fighting or other artifact for this approach.
 There is no rule that faces can not intersect.
 
@@ -109,6 +108,7 @@ If the motion to the direction of the target is more probable, it may get there 
 
 ![](http://i.imgur.com/QlyZY81.jpg)
 ![](http://i.imgur.com/Kd5MF0j.jpg)
+
 Dispersion of sheep from danger and competition
 
 This is great for simulationg large set of npc to convey a sense of activity in the world.
@@ -122,5 +122,6 @@ Wolfs
 
 
 # Soon
-[](http://i.imgur.com/3UIIvrn.png)
-[](http://i.imgur.com/wfDlpZR.png)
+
+![](http://i.imgur.com/3UIIvrn.png)
+![](http://i.imgur.com/wfDlpZR.png)
