@@ -1,8 +1,7 @@
 # voxel-game-engine-prototype
-![](images/start.gif)
-
-
-![](images/edit.gif) ![](images/smart_path.gif) ![](images/population.gif)
+<img src="images/edit.gif" width="300" />
+<img src="images/smart_path.gif" width="300" />
+<img src="images/population.gif" width="300" />
 
 Main controls:
 
@@ -39,8 +38,8 @@ title/image/description
 
 # Meshing
 
-![Imgur](http://i.imgur.com/doc0IMR.jpg)
-![Imgur](http://i.imgur.com/ccliTPS.jpg)
+![](http://i.imgur.com/doc0IMR.jpg)
+![](http://i.imgur.com/ccliTPS.jpg)
 
 [45, 46 meshing example, stable population gif, pathfining]
 
@@ -75,7 +74,7 @@ Meshing can be improved by allowing faces to overlap and extend over undefined (
 Given that the material (visual) is the same, there is no z-fighting or other artifact for this approach.
 There is no rule that faces can not intersect.
 
-![Imgur](http://i.imgur.com/S3ISygc.png)
+![](http://i.imgur.com/S3ISygc.png)
 
 To begin, every chunk with n**3 voxels has 3(n+1) planes where faces are drawn as seen on 8x8x8 chunk above.
 While sharing polygons is a proven viable idea,
@@ -108,8 +107,8 @@ If one can offset the probability of the vectors appearing by some dynamic funct
 will try to reach the direction.
 If the motion to the direction of the target is more probable, it may get there eventually.
 
-![Imgur](http://i.imgur.com/QlyZY81.jpg)
-![Imgur](http://i.imgur.com/Kd5MF0j.jpg)
+![](http://i.imgur.com/QlyZY81.jpg)
+![](http://i.imgur.com/Kd5MF0j.jpg)
 Dispersion of sheep from danger and competition
 
 This is great for simulationg large set of npc to convey a sense of activity in the world.
@@ -117,6 +116,11 @@ This is great for simulationg large set of npc to convey a sense of activity in 
 Wolfs
 
 ![wolf state](http://i.imgur.com/DocAdX0.png)
-![Imgur](http://i.imgur.com/fgtKyDi.jpg)
-![Imgur](http://i.imgur.com/Yj2vJN4.jpg)
-![Imgur](http://i.imgur.com/JHBiQft.jpg)
+![](http://i.imgur.com/fgtKyDi.jpg)
+![](http://i.imgur.com/Yj2vJN4.jpg)
+![](http://i.imgur.com/JHBiQft.jpg)
+
+
+# Soon
+[](http://i.imgur.com/3UIIvrn.png)
+[](http://i.imgur.com/wfDlpZR.png)
