@@ -33,7 +33,12 @@ title/image/description
 # Meshing
 
 ![](http://i.imgur.com/60bts.gif)
-![](http://i.imgur.com/AaCaYxK.gif)
+![](http://i.imgur.com/AaCaYxK.gif?1)
+![](http://i.imgur.com/AaCaYxK.gif?1)
+![Imgur](http://i.imgur.com/AaCaYxK.gif?1)
+![Imgur](http://i.imgur.com/AaCaYxK.gif?1)
+![Imgur](images/intro-1.gif)
+<img src="http://i.imgur.com/AaCaYxK.gif?1" alt="alt text">
 ![Imgur](http://i.imgur.com/doc0IMR.jpg)
 ![Imgur](http://i.imgur.com/ccliTPS.jpg)
 
