@@ -361,7 +361,7 @@ class Wolf(NPC):
         super(Wolf, self).__init__(arg)
         self.task = self.travel()
         self.energy = 100
-        self.hunger = 25
+        self.hunger = 40
 
     def tick(self):
         super(Wolf, self).tick()

@@ -1,19 +1,28 @@
 # voxel-game-engine-prototype
+![](images/start.gif)
+
+
+![](images/edit.gif)
+![](images/smart_path.gif)
+![](images/population.gif)
 
 Main controls:
+
     Mouse to look, wasd to fly and shift to fly faster.
 
     Right click to add and left click to remove voxels.
     Scroll to change affected area size.
 
-    1 to spawn (many) sheep.
-    2 to spawn wolf.
-    3 to spawn human.
+    To spawn (many) sheep: 1
+    To spawn wolf: 2
+    To spawn human: 3
 
     Scroll click to set target for human.
 
     Toggle pause npc:  - or F11 key
     Change debug mode: + or F12 key
+
+    To enable mouse: M
 
     In game press tab for controls reminder.
 
@@ -32,10 +41,6 @@ title/image/description
 
 # Meshing
 
-![Imgur](images/intro-1.gif)
-![Imgur](images/intro-1.gif | width=100)
-![Imgur](images/intro-1.gif =100x50)
-<img src="images/intro-1.gif" width="100" height="50" />
 ![Imgur](http://i.imgur.com/doc0IMR.jpg)
 ![Imgur](http://i.imgur.com/ccliTPS.jpg)
 
