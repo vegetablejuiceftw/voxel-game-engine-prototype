@@ -2,9 +2,7 @@
 ![](images/start.gif)
 
 
-![](images/edit.gif)
-![](images/smart_path.gif)
-![](images/population.gif)
+![](images/edit.gif) ![](images/smart_path.gif) ![](images/population.gif)
 
 Main controls:
 
