@@ -32,7 +32,7 @@ title/image/description
 
 # Meshing
 
-![Imgur](http://i.imgur.com/AaCaYxK.gif?1)
+![Imgur](http://i.imgur.com/AaCaYxK.gif)
 ![Imgur](http://i.imgur.com/doc0IMR.jpg)
 ![Imgur](http://i.imgur.com/ccliTPS.jpg)
 
