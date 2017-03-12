@@ -36,7 +36,7 @@ The main features are:
 
 # Meshing
 
-![](http://i.imgur.com/doc0IMR.jpg)
+<img src="http://i.imgur.com/doc0IMR.jpg" width="600" />
 
 The main challenge in using polygons is figuring out how to convert the voxels into
 **minimum amount of polygons efficiently**.
@@ -45,21 +45,21 @@ In a typical voxel game the voxels do not get modified that often compared to ho
 Which is why the main heavy lifting happens at rendering the voxels.
 As a result, it is quite sensible to optimize the mesh upfront.
 
-![no culling](http://i.imgur.com/nMY4iAk.png)
+<img src="http://i.imgur.com/nMY4iAk.png" width="600" />
 
 No culling method has a voxel to face ratio of 6.
 
 Clearly, in order to improve on the naive method is to simply not to draw the faces that
 are obscured by checking each cubes neighbours before creating a face.
 
-![culling](http://i.imgur.com/T28c2DL.png)
+<img src="http://i.imgur.com/T28c2DL.png" width="600" />
 
 For a Perlin noise map this amounts to somewhere from 1 to 2 faces per voxel.
 
 Improvement can be brought by merging adjacent quads together into larger regions.
 While not optimal greedy implementations perform quite well.
 
-![greedy](http://i.imgur.com/DuWI8GD.png)
+<img src="http://i.imgur.com/DuWI8GD.png" width="600" />
 
 Example of greedy meshing on a solid chunk of voxels
 
@@ -68,12 +68,12 @@ algebra exressions.
 
 Meshing can be improved by allowing faces to overlap and extend over undefined (culled) space as shown in next image.
 
-![extending over culled space](http://i.imgur.com/jYJ1E5f.jpg)
+<img src="over culled space](http://i.imgur." width="600" />
 
 Given that the material (visual) is the same, there is no z-fighting or other artifact for this approach.
 There is no rule that faces can not intersect.
 
-![](http://i.imgur.com/S3ISygc.png)
+<img src="http://i.imgur.com/S3ISygc.png" width="600" />
 
 To begin, every chunk with n**3 voxels has 3(n+1) planes where faces are drawn as seen on 8x8x8 chunk above.
 While sharing polygons is a proven viable idea,
@@ -81,7 +81,7 @@ all voxel faces on a plane can be drawn with a single polygon where the polygonâ
 So if at least 1 face exists on a plane there has to be at least one polygon.
 This would hint that polygon-wise this would be the optimal solution for the least amount of polygons possible.
 
-![example of textured planes](http://i.imgur.com/ShpJfuN.jpg)
+<img src="textured planes](http://i.imgur.c" width="600" />
 
 
 # Pathfinding in voxel games different
@@ -95,8 +95,8 @@ This algorithm follows the A* pathfinding pattern. The main change to the algori
 the added functionality for passing through solid voxels where the travel cost is
 calculated with the necessary changes in mind.
 
-![I am human path start](http://i.imgur.com/EwdjEm6.jpg)
-![end](http://i.imgur.com/NTXZWAe.jpg)
+<img src="](http://i.imgur.com/Ew" width="600" />
+<img src="http://i.imgur.com/NTXZWAe.jpg" width="600" />
 
 # Extra
 Pseudo-random pathfinding.
@@ -106,8 +106,8 @@ If one can offset the probability of the vectors appearing by some dynamic funct
 will try to reach the direction.
 If the motion to the direction of the target is more probable, it may get there eventually.
 
-![](http://i.imgur.com/QlyZY81.jpg)
-![](http://i.imgur.com/Kd5MF0j.jpg)
+<img src="http://i.imgur.com/QlyZY81.jpg" width="600" />
+<img src="http://i.imgur.com/Kd5MF0j.jpg" width="600" />
 
 Dispersion of sheep from danger and competition
 
@@ -115,10 +115,10 @@ This is great for simulationg large set of npc to convey a sense of activity in 
 
 Wolfs
 
-![wolf state](http://i.imgur.com/DocAdX0.png)
-![](http://i.imgur.com/fgtKyDi.jpg)
-![](http://i.imgur.com/Yj2vJN4.jpg)
-![](http://i.imgur.com/JHBiQft.jpg)
+<img src="http://i.imgur.com/DocAdX0.png" width="600" />
+<img src="http://i.imgur.com/fgtKyDi.jpg" width="600" />
+<img src="http://i.imgur.com/Yj2vJN4.jpg" width="600" />
+<img src="http://i.imgur.com/JHBiQft.jpg" width="600" />
 
 
 # Soon
