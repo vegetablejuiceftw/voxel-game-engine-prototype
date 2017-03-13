@@ -68,7 +68,7 @@ algebra exressions.
 
 Meshing can be improved by allowing faces to overlap and extend over undefined (culled) space as shown in next image.
 
-<img src="over culled space](http://i.imgur." width="600" />
+<img src="http://i.imgur.com/jYJ1E5f.jpg" width="600" />
 
 Given that the material (visual) is the same, there is no z-fighting or other artifact for this approach.
 There is no rule that faces can not intersect.
@@ -81,7 +81,7 @@ all voxel faces on a plane can be drawn with a single polygon where the polygonâ
 So if at least 1 face exists on a plane there has to be at least one polygon.
 This would hint that polygon-wise this would be the optimal solution for the least amount of polygons possible.
 
-<img src="textured planes](http://i.imgur.c" width="600" />
+<img src="http://i.imgur.com/ShpJfuN.jpg" width="600" />
 
 
 # Pathfinding in voxel games different
@@ -95,8 +95,8 @@ This algorithm follows the A* pathfinding pattern. The main change to the algori
 the added functionality for passing through solid voxels where the travel cost is
 calculated with the necessary changes in mind.
 
-<img src="](http://i.imgur.com/Ew" width="600" />
-<img src="http://i.imgur.com/NTXZWAe.jpg" width="600" />
+<img src="http://i.imgur.com/EwdjEm6.jpg" width="400" />
+<img src="http://i.imgur.com/NTXZWAe.jpg" width="400" />
 
 # Extra
 Pseudo-random pathfinding.
@@ -106,8 +106,8 @@ If one can offset the probability of the vectors appearing by some dynamic funct
 will try to reach the direction.
 If the motion to the direction of the target is more probable, it may get there eventually.
 
-<img src="http://i.imgur.com/QlyZY81.jpg" width="600" />
-<img src="http://i.imgur.com/Kd5MF0j.jpg" width="600" />
+<img src="http://i.imgur.com/QlyZY81.jpg" width="400" />
+<img src="http://i.imgur.com/Kd5MF0j.jpg" width="400" />
 
 Dispersion of sheep from danger and competition
 
@@ -115,10 +115,10 @@ This is great for simulationg large set of npc to convey a sense of activity in 
 
 Wolfs
 
-<img src="http://i.imgur.com/DocAdX0.png" width="600" />
-<img src="http://i.imgur.com/fgtKyDi.jpg" width="600" />
-<img src="http://i.imgur.com/Yj2vJN4.jpg" width="600" />
-<img src="http://i.imgur.com/JHBiQft.jpg" width="600" />
+<img src="http://i.imgur.com/DocAdX0.png" width="400" />
+<img src="http://i.imgur.com/fgtKyDi.jpg" width="400" />
+<img src="http://i.imgur.com/Yj2vJN4.jpg" width="400" />
+<img src="http://i.imgur.com/JHBiQft.jpg" width="400" />
 
 
 # Soon
