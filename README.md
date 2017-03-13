@@ -45,21 +45,21 @@ In a typical voxel game the voxels do not get modified that often compared to ho
 Which is why the main heavy lifting happens at rendering the voxels.
 As a result, it is quite sensible to optimize the mesh upfront.
 
-<img src="http://i.imgur.com/nMY4iAk.png" width="600" />
+<img src="http://i.imgur.com/nMY4iAk.png" width="400" />
 
 No culling method has a voxel to face ratio of 6.
 
 Clearly, in order to improve on the naive method is to simply not to draw the faces that
 are obscured by checking each cubes neighbours before creating a face.
 
-<img src="http://i.imgur.com/T28c2DL.png" width="600" />
+<img src="http://i.imgur.com/T28c2DL.png" width="400" />
 
 For a Perlin noise map this amounts to somewhere from 1 to 2 faces per voxel.
 
 Improvement can be brought by merging adjacent quads together into larger regions.
 While not optimal greedy implementations perform quite well.
 
-<img src="http://i.imgur.com/DuWI8GD.png" width="600" />
+<img src="http://i.imgur.com/DuWI8GD.png" width="400" />
 
 Example of greedy meshing on a solid chunk of voxels
 
@@ -68,12 +68,12 @@ algebra exressions.
 
 Meshing can be improved by allowing faces to overlap and extend over undefined (culled) space as shown in next image.
 
-<img src="http://i.imgur.com/jYJ1E5f.jpg" width="600" />
+<img src="http://i.imgur.com/jYJ1E5f.jpg" width="500" />
 
 Given that the material (visual) is the same, there is no z-fighting or other artifact for this approach.
 There is no rule that faces can not intersect.
 
-<img src="http://i.imgur.com/S3ISygc.png" width="600" />
+![](http://i.imgur.com/NwhhMDY.png)
 
 To begin, every chunk with n**3 voxels has 3(n+1) planes where faces are drawn as seen on 8x8x8 chunk above.
 While sharing polygons is a proven viable idea,
