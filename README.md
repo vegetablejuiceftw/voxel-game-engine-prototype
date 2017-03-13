@@ -1,4 +1,4 @@
-# voxel-game-engine-prototype
+# WIP: voxel game prototype
 <img src="images/edit.gif" width="292" />
 <img src="images/smart_path.gif" width="292" />
 <img src="images/population.gif" width="292" />
@@ -84,7 +84,7 @@ This would hint that polygon-wise this would be the optimal solution for the lea
 <img src="http://i.imgur.com/ShpJfuN.jpg" width="600" />
 
 
-# Pathfinding in voxel games different
+# Pathfinding in voxel games is different
 
 There is inherent expectation of the world's capability to perform alteration.
 Like the user is able to manipulate the state of the world also the inhabiting actors must meet the same expectations.
@@ -113,7 +113,7 @@ Dispersion of sheep from danger and competition
 
 This is great for simulationg large set of npc to convey a sense of activity in the world.
 
-Wolfs
+Wolves
 
 <img src="http://i.imgur.com/DocAdX0.png" width="400" />
 <img src="http://i.imgur.com/fgtKyDi.jpg" width="400" />
