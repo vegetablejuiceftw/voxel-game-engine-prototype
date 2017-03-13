@@ -45,21 +45,21 @@ In a typical voxel game the voxels do not get modified that often compared to ho
 Which is why the main heavy lifting happens at rendering the voxels.
 As a result, it is quite sensible to optimize the mesh upfront.
 
-<img src="http://i.imgur.com/nMY4iAk.png" width="400" />
+<img src="http://i.imgur.com/nMY4iAk.png" width="300" />
 
 No culling method has a voxel to face ratio of 6.
 
 Clearly, in order to improve on the naive method is to simply not to draw the faces that
 are obscured by checking each cubes neighbours before creating a face.
 
-<img src="http://i.imgur.com/T28c2DL.png" width="400" />
+<img src="http://i.imgur.com/T28c2DL.png" width="300" />
 
 For a Perlin noise map this amounts to somewhere from 1 to 2 faces per voxel.
 
 Improvement can be brought by merging adjacent quads together into larger regions.
 While not optimal greedy implementations perform quite well.
 
-<img src="http://i.imgur.com/DuWI8GD.png" width="400" />
+<img src="http://i.imgur.com/DuWI8GD.png" width="300" />
 
 Example of greedy meshing on a solid chunk of voxels
 
