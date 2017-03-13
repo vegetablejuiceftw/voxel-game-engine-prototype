@@ -10,11 +10,11 @@
     Right click to add and left click to remove voxels.
     Scroll to change affected area size.
 
-    To spawn (many) sheep: 1
+    To spawn a herd sheep: 1
     To spawn wolf: 2
     To spawn human: 3
 
-    Scroll click to set target for human.
+    Scroll click to set the target for human.
 
     Toggle pause npc:  - or F11 key
     Change debug mode: + or F12 key
@@ -32,7 +32,7 @@ I will also include some more broad explanations for said thesis here also.
 The main features are:
 * voxel rendering through optimized greedy meshing
 * examination of different npc ai implementations
-* voxel aware destructive pathfinding
+* voxel aware destructive path-finding
 
 # Meshing
 
@@ -66,7 +66,7 @@ Example of greedy meshing on a solid chunk of voxels
 The idea was inspired by Karnaugh map method which is used to simplify boolean
 algebra exressions.
 
-Meshing can be improved by allowing faces to overlap and extend over undefined (culled) space as shown in next image.
+Meshing can be improved by allowing faces to overlap and extend over undefined (culled) space as shown in next the image.
 
 <img src="http://i.imgur.com/jYJ1E5f.jpg" width="500" />
 
@@ -75,23 +75,14 @@ There is no rule that faces can not intersect.
 
 ![](http://i.imgur.com/NwhhMDY.png)
 
-To begin, every chunk with n**3 voxels has 3(n+1) planes where faces are drawn as seen on 8x8x8 chunk above.
-While sharing polygons is a proven viable idea,
-all voxel faces on a plane can be drawn with a single polygon where the polygon’s texture pixels are the faces.
-So if at least 1 face exists on a plane there has to be at least one polygon.
-This would hint that polygon-wise this would be the optimal solution for the least amount of polygons possible.
-
-<img src="http://i.imgur.com/ShpJfuN.jpg" width="600" />
-
-
 # Pathfinding in voxel games is different
 
 There is inherent expectation of the world's capability to perform alteration.
-Like the user is able to manipulate the state of the world also the inhabiting actors must meet the same expectations.
-This means that the pathfinding not only has to traverse nodes but also be able to alter the state of the world.
+Likewise to the user who is able to manipulate the state of the world also the inhabiting actors must meet the same expectations.
+This means that the pathfinding not only has to traverse nodes but also should be able to alter the state of the world.
 By bringing this new dimension of complexity to the pathfinding problem the prospect of finding the optimal path becomes seemingly unreachable.
 
-This algorithm follows the A* pathfinding pattern. The main change to the algorithm is
+This algorithm follows the A* path-finding pattern. The main change to the algorithm is
 the added functionality for passing through solid voxels where the travel cost is
 calculated with the necessary changes in mind.
 
@@ -111,7 +102,7 @@ If the motion to the direction of the target is more probable, it may get there 
 
 Dispersion of sheep from danger and competition
 
-This is great for simulationg large set of npc to convey a sense of activity in the world.
+This is great for simulating large set of npc to convey a sense of activity in the world.
 
 Wolves
 
@@ -123,5 +114,11 @@ Wolves
 
 # Soon
 
+Every chunk with n**3 voxels has 3(n+1) planes where faces are drawn as seen on 8x8x8 chunk above.
+While sharing polygons is a proven viable idea,
+all voxel faces on a plane can be drawn with a single polygon where the texture's pixels represent the voxel faces.
+Having one polygon for all voxel faces in a plane would improve the rendering overhead significantly.
+
+<img src="http://i.imgur.com/ShpJfuN.jpg" width="600" />
 ![](http://i.imgur.com/3UIIvrn.png)
 ![](http://i.imgur.com/wfDlpZR.png)
